@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1005120634142",
+    "project_id": "schooly-2-0",
+    "storage_bucket": "schooly-2-0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1005120634142:android:e00105c8fb52680576dd0f",
+        "android_client_info": {
+          "package_name": "daniel.malki.schooly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASXYYSEcJUiI5G2AU-N6v1akTxoZ8LFPM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
