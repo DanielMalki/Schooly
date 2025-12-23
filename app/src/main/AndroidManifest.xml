@@ -12,6 +12,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Schooly">
         <activity
+            android:name=".ProfileActivity"
+            android:exported="false" />
+        <activity
+            android:name=".BaseMenuActivity"
+            android:exported="false" />
+        <activity
             android:name=".LoginActivity"
             android:exported="false" />
         <activity
