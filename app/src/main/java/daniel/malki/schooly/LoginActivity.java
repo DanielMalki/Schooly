@@ -1,5 +1,6 @@
 package daniel.malki.schooly;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
@@ -96,7 +97,11 @@ public class LoginActivity extends AppCompatActivity {
                 "Welcome " + userName + " 👋",
                 Toast.LENGTH_SHORT).show();
 
-        // TODO: Intent למסך הבא
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+
     }
 
     /* ---------------- ID VALIDATION ---------------- */
