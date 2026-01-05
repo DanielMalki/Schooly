@@ -30,11 +30,11 @@
                     android:id="@+id/imgAvatar"
                     android:layout_width="80dp"
                     android:layout_height="80dp"
-                    android:src="@drawable/ic_profile"
+                    android:src="@android:drawable/editbox_dropdown_dark_frame"
                     android:tint="#1A237E"
-                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <TextView
                     android:id="@+id/tvFullName"

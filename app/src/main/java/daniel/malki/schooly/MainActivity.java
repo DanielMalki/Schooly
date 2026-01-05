@@ -13,11 +13,6 @@ public class MainActivity extends BaseMenuActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setTitle("Home");
-
-        button = findViewById(R.id.button);
-        button.setOnClickListener(v ->
-                startActivity(new Intent(MainActivity.this, LoginActivity.class))
-        );
     }
 
     @Override
