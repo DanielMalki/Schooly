@@ -11,14 +11,15 @@
         android:id="@+id/tvTitle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginTop="60dp"
+        android:gravity="center"
         android:text="Welcome to Schooly"
+        android:textColor="#1A237E"
         android:textSize="30sp"
         android:textStyle="bold"
-        android:textColor="#1A237E"
-        android:gravity="center"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Subtitle -->
     <TextView
