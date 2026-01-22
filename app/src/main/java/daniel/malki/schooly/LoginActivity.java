@@ -79,29 +79,48 @@ public class LoginActivity extends AppCompatActivity {
                 );
     }
 
+    // בתוך LoginActivity.java
+
+    // בתוך LoginActivity.java -> הפונקציה handleLoginResult
+
     private void handleLoginResult(DocumentSnapshot document, String inputPassword) {
         if (!document.exists()) {
             idLayout.setError("User not found");
             return;
         }
 
+        // 1. שליפת הנתונים לפי השמות המדויקים שלך
         String savedPassword = document.getString("password");
-        String userName = document.getString("name");
+        String name = document.getString("name");
+        String email = document.getString("Email"); // שים לב ל-E הגדולה!
 
+        // ב-Firebase מספרים חוזרים כ-Long
+        Long typeLong = document.getLong("type");
+        int type = (typeLong != null) ? typeLong.intValue() : 0; // ברירת מחדל 0 (תלמיד)
+
+        // 2. בדיקת סיסמה
         if (!inputPassword.equals(savedPassword)) {
             passwordLayout.setError("Incorrect password");
             return;
         }
 
-        Toast.makeText(this,
-                "Welcome " + userName + " 👋",
-                Toast.LENGTH_SHORT).show();
+        // 3. שמירה ב-SharedPreferences (כולל ה-type וה-email)
+        getSharedPreferences("SchoolyPrefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("isLoggedIn", true)
+                .putString("userId", document.getId()) // ת"ז
+                .putString("userName", name)
+                .putString("userEmail", email)
+                .putInt("userType", type) // שומרים את המספר (0/1/2)
+                .apply();
 
+        Toast.makeText(this, "Welcome " + name + " 👋", Toast.LENGTH_SHORT).show();
+
+        // --- כאן נכנס שינוי חשוב לניתוב (נסביר מיד) ---
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
-
     }
 
     /* ---------------- ID VALIDATION ---------------- */
