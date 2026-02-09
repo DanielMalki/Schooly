@@ -6,6 +6,5 @@
         <item name="cardBackgroundColor">@color/card_background_selector</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
-        <!--fjdfhjfgfkjgf-->
         <item name="android:foreground">?attr/selectableItemBackground</item> </style>
 </resources>
