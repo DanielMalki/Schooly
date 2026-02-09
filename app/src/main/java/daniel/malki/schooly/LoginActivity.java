@@ -74,9 +74,10 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnSuccessListener(document ->
                         handleLoginResult(document, inputPassword)
                 )
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, "Database error", Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Database error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    e.printStackTrace();
+                });
     }
 
     private void handleLoginResult(DocumentSnapshot document, String inputPassword) {
@@ -85,23 +86,45 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        // 1. שליפת הנתונים
         String savedPassword = document.getString("password");
-        String userName = document.getString("name");
+        String name = document.getString("name");
+        String email = document.getString("Email");
 
-        if (!inputPassword.equals(savedPassword)) {
+        Long typeLong = document.getLong("type");
+        int type = (typeLong != null) ? typeLong.intValue() : 0;
+
+        // 2. בדיקת סיסמה
+        if (savedPassword == null || !savedPassword.equals(inputPassword)) {
             passwordLayout.setError("Incorrect password");
             return;
         }
 
-        Toast.makeText(this,
-                "Welcome " + userName + " 👋",
-                Toast.LENGTH_SHORT).show();
+        // 3. שמירה ב-SharedPreferences
+        getSharedPreferences("SchoolyPrefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("isLoggedIn", true)
+                .putString("userId", document.getId())
+                .putString("userName", name)
+                .putString("userEmail", email)
+                .putInt("userType", type)
+                .apply();
 
-        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        Toast.makeText(this, "Welcome " + name + " 👋", Toast.LENGTH_SHORT).show();
+
+        // 4. ניתוב לפי סוג משתמש
+        Intent intent;
+        if (type == 2) {
+            // מנהל מערכת
+            intent = new Intent(LoginActivity.this, AdminDashboardActivity.class);
+        } else {
+            // תלמיד (0) או מורה (1)
+            intent = new Intent(LoginActivity.this, MainActivity.class);
+        }
+
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
-
     }
 
     /* ---------------- ID VALIDATION ---------------- */
@@ -131,6 +154,6 @@ public class LoginActivity extends AppCompatActivity {
     /* ---------------- PASSWORD VALIDATION ---------------- */
 
     private boolean isValidPassword(String password) {
-        return password.length() >= 4;
+        return password != null && password.length() >= 4;
     }
 }
