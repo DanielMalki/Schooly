@@ -67,7 +67,15 @@ public abstract class BaseMenuActivity extends AppCompatActivity
         return true;
     }
 
+    // בתוך BaseMenuActivity.java
+
     protected void logout() {
+        // מחיקת הנתונים מהזיכרון
+        getSharedPreferences("SchoolyPrefs", MODE_PRIVATE)
+                .edit()
+                .clear() // מוחק הכל
+                .apply();
+
         Intent intent = new Intent(this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
