@@ -3,6 +3,8 @@
     <style name="DashboardCard">
         <item name="cardCornerRadius">20dp</item>
         <item name="cardElevation">8dp</item>
-        <item name="cardBackgroundColor">#1A237E</item>
-    </style>
+        <item name="cardBackgroundColor">@color/card_background_selector</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item> </style>
 </resources>
