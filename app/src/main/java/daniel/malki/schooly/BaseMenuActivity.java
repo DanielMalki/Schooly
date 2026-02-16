@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View; // הוספתי
+import android.widget.TextView; // הוספתי
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -62,6 +64,29 @@ public abstract class BaseMenuActivity extends AppCompatActivity
 
         // 4. סינון התפריט לפי סוג משתמש
         updateMenuVisibility();
+
+        // 5. עדכון השם למעלה (החדש!)
+        updateHeaderInfo();
+    }
+
+    /**
+     * פונקציה חדשה: מעדכנת את השם והכותרת בתפריט הצד
+     */
+    private void updateHeaderInfo() {
+        // גישה ל-Header שנמצא בתוך ה-NavigationView
+        View headerView = navigationView.getHeaderView(0);
+
+        if (headerView != null) {
+            TextView tvName = headerView.findViewById(R.id.tvHeaderName);
+            // TextView tvSubtitle = headerView.findViewById(R.id.tvHeaderSubtitle); // אם תרצה לשנות גם את הטקסט הקטן
+
+            // שליפת השם מהזיכרון
+            SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
+            String name = prefs.getString("userName", "User");
+
+            // עדכון הטקסט
+            tvName.setText("Hello, " + name + " 👋");
+        }
     }
 
     /**

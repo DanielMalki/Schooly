@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="180dp"
+    android:background="#1A237E"
+    android:gravity="bottom"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:theme="@style/ThemeOverlay.AppCompat.Dark">
+
+    <ImageView
+        android:id="@+id/ivHeaderIcon"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:layout_marginBottom="16dp"
+        android:src="@android:drawable/sym_def_app_icon"
+        android:contentDescription="User Icon" />
+
+    <TextView
+        android:id="@+id/tvHeaderName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Loading Name..."
+        android:textColor="#FFFFFF"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvHeaderSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="What would you like to do today?"
+        android:textColor="#C5CAE9"
+        android:textSize="14sp" />
+
+</LinearLayout>
