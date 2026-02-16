@@ -39,6 +39,12 @@ public class AdminDashboardActivity extends BaseMenuActivity {
         return R.layout.activity_admin_dashboard;
     }
 
+    @Override
+    protected int[] getAllowedUserTypes() {
+        // מחזיר מערך שבו רק 2 (מנהל) מורשה
+        return new int[]{2};
+    }
+
     /**
      * אותה פונקציה מה-MainActivity לאנימציה ומעבר
      */
