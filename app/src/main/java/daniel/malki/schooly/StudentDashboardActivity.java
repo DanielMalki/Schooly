@@ -1,6 +1,5 @@
 package daniel.malki.schooly;
 
-import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
@@ -8,11 +7,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 
-import androidx.cardview.widget.CardView;
-
 import com.google.android.material.card.MaterialCardView;
 
-public class MainActivity extends BaseMenuActivity {
+public class StudentDashboardActivity extends BaseMenuActivity {
 
     private MaterialCardView cardProfile, cardSchedule, cardGrades, cardAttendance, cardHomework, cardMessages;
 
@@ -56,7 +53,7 @@ public class MainActivity extends BaseMenuActivity {
         // 1. מה קורה כשלוחצים (מעבר מסך)
         card.setOnClickListener(v -> {
             if (destinationActivity != null) {
-                startActivity(new Intent(MainActivity.this, destinationActivity));
+                startActivity(new Intent(StudentDashboardActivity.this, destinationActivity));
             } else {
                 Toast.makeText(this, "Coming Soon...", Toast.LENGTH_SHORT).show();
             }

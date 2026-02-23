@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp"
+    android:background="#F5F5F5">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@android:color/white"
+        android:padding="20dp"
+        android:elevation="4dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Add New User"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#1A237E"
+            android:layout_marginBottom="20dp"
+            android:gravity="center"/>
+
+        <EditText
+            android:id="@+id/etNewTz"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="ID Number (T.Z) *"
+            android:inputType="number"
+            android:layout_marginBottom="15dp"
+            android:background="#EEEEEE"
+            android:padding="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="15dp">
+
+            <EditText
+                android:id="@+id/etFirstName"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="50dp"
+                android:hint="First Name *"
+                android:inputType="textPersonName"
+                android:background="#EEEEEE"
+                android:padding="10dp"
+                android:layout_marginEnd="5dp"/>
+
+            <EditText
+                android:id="@+id/etLastName"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="50dp"
+                android:hint="Last Name *"
+                android:inputType="textPersonName"
+                android:background="#EEEEEE"
+                android:padding="10dp"
+                android:layout_marginStart="5dp"/>
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/etMiddleName"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="Middle Name (Optional)"
+            android:inputType="textPersonName"
+            android:layout_marginBottom="15dp"
+            android:background="#EEEEEE"
+            android:padding="10dp"/>
+
+        <EditText
+            android:id="@+id/etNewEmail"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="Email Address *"
+            android:inputType="textEmailAddress"
+            android:layout_marginBottom="15dp"
+            android:background="#EEEEEE"
+            android:padding="10dp"/>
+
+        <EditText
+            android:id="@+id/etNewPassword"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="Password *"
+            android:inputType="textPassword"
+            android:layout_marginBottom="15dp"
+            android:background="#EEEEEE"
+            android:padding="10dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select User Role:"
+            android:textStyle="bold"
+            android:layout_marginBottom="5dp"/>
+
+        <Spinner
+            android:id="@+id/spinnerRole"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginBottom="15dp"
+            android:background="#EEEEEE"/>
+
+        <LinearLayout
+            android:id="@+id/layoutStudentFields"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Student Academic Info:"
+                android:textStyle="bold"
+                android:textColor="#FF5722"
+                android:layout_marginBottom="10dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="10dp">
+
+                <EditText
+                    android:id="@+id/etGrade"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="50dp"
+                    android:hint="Grade (e.g., 10, יא) *"
+                    android:background="#FFF3E0"
+                    android:padding="10dp"
+                    android:layout_marginEnd="5dp"/>
+
+                <EditText
+                    android:id="@+id/etClassNum"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="50dp"
+                    android:hint="Class No. *"
+                    android:inputType="number"
+                    android:background="#FFF3E0"
+                    android:padding="10dp"
+                    android:layout_marginStart="5dp"/>
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/etMath"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:hint="Math Level/Class *"
+                android:layout_marginBottom="10dp"
+                android:background="#FFF3E0"
+                android:padding="10dp"/>
+
+            <EditText
+                android:id="@+id/etEnglish"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:hint="English Level/Class *"
+                android:layout_marginBottom="10dp"
+                android:background="#FFF3E0"
+                android:padding="10dp"/>
+
+            <EditText
+                android:id="@+id/etMajor1"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:hint="Major 1 (Optional)"
+                android:layout_marginBottom="10dp"
+                android:background="#FFF3E0"
+                android:padding="10dp"/>
+
+            <EditText
+                android:id="@+id/etMajor2"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:hint="Major 2 (Optional)"
+                android:layout_marginBottom="15dp"
+                android:background="#FFF3E0"
+                android:padding="10dp"/>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnSaveUser"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Save User"
+            android:textSize="18sp"
+            android:backgroundTint="#1A237E"
+            android:textColor="@android:color/white"/>
+
+    </LinearLayout>
+</ScrollView>

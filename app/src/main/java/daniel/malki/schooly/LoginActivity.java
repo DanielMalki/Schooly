@@ -25,6 +25,23 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // --- הבדיקה החדשה: האם המשתמש כבר מחובר מפעמים קודמות? ---
+        android.content.SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
+        if (prefs.getBoolean("isLoggedIn", false)) {
+            int type = prefs.getInt("userType", 0);
+            Intent intent;
+            if (type == 2) {
+                intent = new Intent(this, AdminDashboardActivity.class);
+            } else {
+                intent = new Intent(this, StudentDashboardActivity.class);
+            }
+            startActivity(intent);
+            finish(); // סוגרים את ה-Login כדי שלא יוכלו לחזור אליו עם כפתור "אחורה"
+            return; // עוצרים את המשך טעינת המסך כי אנחנו כבר עוברים מסך
+        }
+        // -----------------------------------------------------------
+
         setContentView(R.layout.activity_login);
 
         db = FirebaseFirestore.getInstance();
@@ -119,7 +136,7 @@ public class LoginActivity extends AppCompatActivity {
             intent = new Intent(LoginActivity.this, AdminDashboardActivity.class);
         } else {
             // תלמיד (0) או מורה (1)
-            intent = new Intent(LoginActivity.this, MainActivity.class);
+            intent = new Intent(LoginActivity.this, StudentDashboardActivity.class);
         }
 
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

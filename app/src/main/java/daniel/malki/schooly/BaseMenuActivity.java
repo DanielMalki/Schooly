@@ -154,8 +154,10 @@ public abstract class BaseMenuActivity extends AppCompatActivity
 
         // --- כפתורים בפיתוח (Admin) ---
         else if (id == R.id.menu_add_user) {
-            Toast.makeText(this, "Add User Module - Coming Soon 🛠️", Toast.LENGTH_SHORT).show();
-            // בעתיד: startActivity(new Intent(this, AddUserActivity.class));
+            // מונע פתיחה כפולה של אותו מסך
+            if (!(this instanceof AddUserActivity)) {
+                startActivity(new Intent(this, AddUserActivity.class));
+            }
         }
         else if (id == R.id.menu_manage_users) {
             Toast.makeText(this, "Manage Users - Coming Soon 🛠️", Toast.LENGTH_SHORT).show();
@@ -211,12 +213,16 @@ public abstract class BaseMenuActivity extends AppCompatActivity
 
         Intent intent;
         if (type == 2) {
+            // אם זה אדמין - לך לדאשבורד מנהל
             if (this instanceof AdminDashboardActivity) return;
             intent = new Intent(this, AdminDashboardActivity.class);
         } else {
-            if (this instanceof MainActivity) return;
-            intent = new Intent(this, MainActivity.class);
+            // אם זה תלמיד (או מורה כרגע) - לך לדאשבורד תלמיד
+            if (this instanceof StudentDashboardActivity) return;
+            intent = new Intent(this, StudentDashboardActivity.class);
         }
+
+        // מנקה את היסטוריית המסכים כדי שהמשתמש לא יוכל ללחוץ "אחורה" ולחזור למסך לא קשור
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
     }
