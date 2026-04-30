@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="70dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/tvHourNumber"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="#333333"/>
+
+            <TextView
+                android:id="@+id/tvHourTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="08:00\n08:45"
+                android:textSize="12sp"
+                android:gravity="center"
+                android:textColor="#888888"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#E0E0E0"
+            android:layout_marginHorizontal="12dp"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvSubjectName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Free Lesson"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#005088"/>
+
+            <TextView
+                android:id="@+id/tvTeacherName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No Teacher"
+                android:textSize="14sp"
+                android:textColor="#555555"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnEditLesson"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="10dp"
+            android:contentDescription="Edit lesson"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="#2E8B57"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"/>
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

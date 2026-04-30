@@ -22,6 +22,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import com.google.firebase.firestore.FieldValue;
+
 public class ProfileActivity extends BaseMenuActivity {
 
     private ImageView imgAvatar;
@@ -95,7 +97,7 @@ public class ProfileActivity extends BaseMenuActivity {
     }
 
     private void showImageSourceDialog() {
-        String[] options = {"Open Camera 📷", "Choose from Gallery 🖼️", "Cancel"};
+        String[] options = {"Open Camera 📷", "Choose from Gallery 🖼️", "Remove Picture 🗑️", "Cancel ❌"};
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Update Profile Picture");
         builder.setItems(options, (dialog, which) -> {
@@ -104,6 +106,8 @@ public class ProfileActivity extends BaseMenuActivity {
             } else if (which == 1) {
                 Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 galleryLauncher.launch(intent);
+            } else if (which == 2) {
+                removeProfilePicture(); // הפונקציה החדשה שלנו שניצור עכשיו
             } else {
                 dialog.dismiss();
             }
@@ -137,6 +141,27 @@ public class ProfileActivity extends BaseMenuActivity {
         db.collection("users").document(userId).update("profileImageBlob", blob)
                 .addOnSuccessListener(aVoid -> Toast.makeText(this, "Picture saved perfectly! 🚀", Toast.LENGTH_SHORT).show())
                 .addOnFailureListener(e -> Toast.makeText(this, "Error saving picture", Toast.LENGTH_SHORT).show());
+    }
+
+    private void removeProfilePicture() {
+        String userId = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE).getString("userId", "");
+        if (userId.isEmpty()) return;
+
+        Toast.makeText(this, "Removing picture...", Toast.LENGTH_SHORT).show();
+
+        // מוחק את שדה התמונה מהמסמך של המשתמש ב-Firestore
+        db.collection("users").document(userId).update("profileImageBlob", FieldValue.delete())
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Picture removed successfully", Toast.LENGTH_SHORT).show();
+
+                    // מנקה את התמונה הקיימת מ-Glide
+                    Glide.with(this).clear(imgAvatar);
+
+                    // מחזיר את האייקון הריק (שים לב: אם יש לך אייקון ברירת מחדל אחר, שנה את השם פה)
+                    imgAvatar.setImageResource(R.drawable.ic_launcher_foreground);
+
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Error removing picture", Toast.LENGTH_SHORT).show());
     }
 
     /* ---------------- טעינת נתונים (ותמונת פרופיל) ---------------- */
