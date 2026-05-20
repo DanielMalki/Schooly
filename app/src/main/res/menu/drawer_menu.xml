@@ -21,6 +21,11 @@
                 android:icon="@android:drawable/ic_input_add"/>
 
             <item
+                android:id="@+id/menu_add_class"
+                android:title="Add Learning Group"
+                android:icon="@android:drawable/ic_input_add"/>
+
+            <item
                 android:id="@+id/menu_manage_users"
                 android:title="Manage Users"
                 android:icon="@android:drawable/ic_menu_edit"/>

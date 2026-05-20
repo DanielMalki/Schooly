@@ -10,25 +10,26 @@ import com.google.android.material.card.MaterialCardView;
 
 public class AdminDashboardActivity extends BaseMenuActivity {
 
-    private MaterialCardView cardAddUser, cardStudents, cardTeachers, cardSchedule;
+    // הוספנו את ה-Card של הכיתה החדשה לרשימה
+    private MaterialCardView cardAddUser, cardAddClass, cardStudents, cardTeachers, cardSchedule;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setTitle("Admin Panel"); // הכותרת למעלה
+        setTitle("Admin Panel");
 
-        // חיבור ל-XML
+        // חיבור ל-XML המעודכן
         cardAddUser = findViewById(R.id.cardAddUser);
+        cardAddClass = findViewById(R.id.cardAddClass); // הקישור החדש
         cardStudents = findViewById(R.id.cardStudents);
         cardTeachers = findViewById(R.id.cardTeachers);
         cardSchedule = findViewById(R.id.cardSchedule);
 
-        // הגדרת לחיצות ואנימציות
+        // הגדרת הלחיצות והאינטנטים האמיתיים!
+        setupCard(cardAddUser, AddUserActivity.class);    // מקשר למסך הוספת משתמש
+        setupCard(cardAddClass, AddClassActivity.class);  // מקשר למסך הוספת כיתה/קבוצה
 
-        // זה הכפתור הכי חשוב כרגע - הוספת משתמש
-        // נשאיר אותו כרגע עם הודעה עד שנבנה את המסך הבא
-        setupCard(cardAddUser, null);
-
+        // שאר המסכים עדיין בפיתוח, נשאיר אותם כרגע כפי שהיו
         setupCard(cardStudents, null);
         setupCard(cardTeachers, null);
         setupCard(cardSchedule, null);
@@ -41,26 +42,20 @@ public class AdminDashboardActivity extends BaseMenuActivity {
 
     @Override
     protected int[] getAllowedUserTypes() {
-        // מחזיר מערך שבו רק 2 (מנהל) מורשה
-        return new int[]{2};
+        return new int[]{2}; // רק אדמין מורשה
     }
 
-    /**
-     * אותה פונקציה מה-MainActivity לאנימציה ומעבר
-     */
     @SuppressLint("ClickableViewAccessibility")
     private void setupCard(View card, Class<?> destinationActivity) {
-
         card.setOnClickListener(v -> {
             if (destinationActivity != null) {
                 startActivity(new Intent(this, destinationActivity));
             } else {
-                // זמני - עד שנבנה את המסכים
                 Toast.makeText(this, "Module under construction 🛠️", Toast.LENGTH_SHORT).show();
             }
         });
 
-        // אנימציית כיווץ
+        // אנימציית הכיווץ היפה בלחיצה
         card.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:

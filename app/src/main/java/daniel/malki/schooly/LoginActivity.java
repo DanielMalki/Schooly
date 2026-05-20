@@ -106,7 +106,7 @@ public class LoginActivity extends AppCompatActivity {
         // 1. שליפת הנתונים
         String savedPassword = document.getString("password");
         String name = document.getString("name");
-        String email = document.getString("Email");
+        String email = document.getString("email");
 
         Long typeLong = document.getLong("type");
         int type = (typeLong != null) ? typeLong.intValue() : 0;

@@ -41,7 +41,7 @@ public class StudentDashboardActivity extends BaseMenuActivity {
 
     @Override
     protected int getLayoutResourceId() {
-        return R.layout.activity_main;
+        return R.layout.activity_student_dashboard;
     }
 
     /**

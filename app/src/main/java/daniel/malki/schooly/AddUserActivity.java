@@ -8,6 +8,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -15,65 +16,58 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AddUserActivity extends BaseMenuActivity {
-
-    // ================== רשימות הנתונים למערכת ==================
-
-    // 1. רשימת כלל המקצועות בבית הספר (לשיוך למורה - יכול לכלול הכל)
-    private final String[] allTeachableSubjects = {"Math 3", "Math 4", "Math 5", "English 3", "English 4", "English 5", "History", "Literature", "Physics", "Chemistry", "Biology", "Computer Science", "Software Engineering", "Geography", "Physical Education", "Civics", "Bible", "Sociology", "Theater", "Economy"};
-
-    // 2. רשימת מקצועות ההרחבה בלבד (לבחירת מורחב א' ומורחב ב' לתלמיד)
-    private final String[] majorSubjects = {"Physics", "Chemistry", "Biology", "Computer Science", "Geography", "Art", "Music", "Psychology"};
-
-    // 3. רשימות זמניות למתמטיקה ואנגלית (עד שיהיו לנו מורים במסד הנתונים)
-    // בעתיד זה יתמלא אוטומטית (למשל: "5 אורלי", "4 רינת"), כרגע רק ברירות המחדל שביקשת.
-    private final String[] mathOptions = {"Select Math Level *", "Not decided yet (עדיין לא הוחלט)", "Exempt (פטור)"};
-    private final String[] englishOptions = {"Select English Level *", "Not decided yet (עדיין לא הוחלט)", "Exempt (פטור)"};
-
-    // 4. רשימת שכבות
-    private final String[] gradesList = {"Select Grade *", "1", "2", "3", "4", "5","6", "7", "8", "9", "10", "11", "12", "13","14"};
-
-    // ============================================================
 
     private EditText etTz, etFirstName, etLastName, etMiddleName, etEmail, etPassword;
     private Spinner spinnerRole;
     private Button btnSaveUser;
 
-    // שדות של תלמיד
+    // רכיבי תלמיד (קבוצות למידה)
     private LinearLayout layoutStudentFields;
-    private Spinner spinnerGrade, spinnerClassNum, spinnerMath, spinnerEnglish, spinnerMajor1, spinnerMajor2;
+    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerMajor1Group, spinnerMajor2Group;
 
-    // שדות של מורה / מנהל
+    // רכיבי מורה
+    // רכיבי מורה
     private LinearLayout layoutTeacherFields;
+    private LinearLayout layoutSelectedSubjectsList; // המיכל החדש לרשימה שורה-אחר-שורה
+    private ImageButton btnQuickAddSubject;
     private TextView tvSelectSubjects;
-
-    private boolean[] selectedSubjectsArray;
-    private ArrayList<String> teachableSubjects = new ArrayList<>();
 
     private FirebaseFirestore db;
 
-    @Override
-    protected int getLayoutResourceId() {
-        return R.layout.activity_add_user;
-    }
+    // רשימות דינמיות למקצועות (IDs ושמות לתצוגה)
+    private ArrayList<String> subjectNames = new ArrayList<>();
+    private ArrayList<String> subjectIds = new ArrayList<>();
+    private boolean[] checkedSubjectsArray; // שומר אילו מקצועות מסומנים ב-V
+    private ArrayList<String> chosenSubjectIds = new ArrayList<>(); // ה-IDs שהמנהל בחר למורה בפועל
+
+    // רשימות מופרדות לקבוצות הלמידה של התלמיד
+    private ArrayList<String> homeroomNames = new ArrayList<>(), homeroomIds = new ArrayList<>();
+    private ArrayList<String> mathNames = new ArrayList<>(), mathIds = new ArrayList<>();
+    private ArrayList<String> englishNames = new ArrayList<>(), englishIds = new ArrayList<>();
+    private ArrayList<String> majorNames = new ArrayList<>(), majorIds = new ArrayList<>();
 
     @Override
-    protected int[] getAllowedUserTypes() {
-        return new int[]{2}; // רק אדמין
-    }
+    protected int getLayoutResourceId() { return R.layout.activity_add_user; }
+
+    @Override
+    protected int[] getAllowedUserTypes() { return new int[]{2}; } // אדמין בלבד
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         db = FirebaseFirestore.getInstance();
 
+        // אתחול שדות כלליים
         etTz = findViewById(R.id.etNewTz);
         etFirstName = findViewById(R.id.etFirstName);
         etLastName = findViewById(R.id.etLastName);
@@ -83,77 +77,50 @@ public class AddUserActivity extends BaseMenuActivity {
         spinnerRole = findViewById(R.id.spinnerRole);
         btnSaveUser = findViewById(R.id.btnSaveUser);
 
-        // תלמיד
+        // אתחול שדות תלמיד
         layoutStudentFields = findViewById(R.id.layoutStudentFields);
-        spinnerGrade = findViewById(R.id.spinnerGrade);
-        spinnerClassNum = findViewById(R.id.spinnerClassNum);
-        spinnerMath = findViewById(R.id.spinnerMath);
-        spinnerEnglish = findViewById(R.id.spinnerEnglish);
-        spinnerMajor1 = findViewById(R.id.spinnerMajor1);
-        spinnerMajor2 = findViewById(R.id.spinnerMajor2);
+        spinnerHomeroom = findViewById(R.id.spinnerHomeroom);
+        spinnerMathGroup = findViewById(R.id.spinnerMathGroup);
+        spinnerEnglishGroup = findViewById(R.id.spinnerEnglishGroup);
+        spinnerMajor1Group = findViewById(R.id.spinnerMajor1Group);
+        spinnerMajor2Group = findViewById(R.id.spinnerMajor2Group);
 
-        // מורה/מנהל
+        // אתחול שדות מורה
         layoutTeacherFields = findViewById(R.id.layoutTeacherFields);
+        layoutSelectedSubjectsList = findViewById(R.id.layoutSelectedSubjectsList);
         tvSelectSubjects = findViewById(R.id.tvSelectSubjects);
-        selectedSubjectsArray = new boolean[allTeachableSubjects.length];
+        btnQuickAddSubject = findViewById(R.id.btnQuickAddSubject);
 
-        setupSpinners();
-        setupGradeAndClassLogic();
+        // בלחיצה על הטקסט-ויו ייפתח הדיאלוג עם ה-Checkboxes
+        tvSelectSubjects.setOnClickListener(v -> showSubjectsMultiChoiceDialog());
 
+        // הגדרת מאזין לכפתור הפלוס המהיר
+        btnQuickAddSubject.setOnClickListener(v -> showQuickAddSubjectDialog());
+
+        setupRoleSpinner();
+
+        // טעינת כל המידע מ-Firestore ברקע
+        loadSubjectsFromFirestore();
+        loadClassesFromFirestore();
+
+        btnSaveUser.setOnClickListener(v -> saveUserToDatabase());
+    }
+
+    private void setupRoleSpinner() {
+        String[] roles = {"Student", "Teacher", "Admin"};
+        spinnerRole.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, roles));
         spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 0) { // תלמיד
                     layoutStudentFields.setVisibility(View.VISIBLE);
                     layoutTeacherFields.setVisibility(View.GONE);
-                } else { // מורה או מנהל
+                } else { // מורה או אדמין
                     layoutStudentFields.setVisibility(View.GONE);
                     layoutTeacherFields.setVisibility(View.VISIBLE);
-                }
-            }
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) { }
-        });
 
-        tvSelectSubjects.setOnClickListener(v -> showSubjectsDialog());
-        btnSaveUser.setOnClickListener(v -> saveUserToDatabase());
-    }
-
-    private void setupSpinners() {
-        String[] roles = {"Student", "Teacher", "Admin"};
-        spinnerRole.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, roles));
-
-        spinnerMath.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathOptions));
-        spinnerEnglish.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishOptions));
-
-        // הכנת רשימת המגמות (נוסיף "Select Major" בהתחלה ונגדיר מורחב א' ומורחב ב')
-        String[] major1Options = new String[majorSubjects.length + 1];
-        major1Options[0] = "Select Major A (מורחב א')";
-        System.arraycopy(majorSubjects, 0, major1Options, 1, majorSubjects.length);
-
-        String[] major2Options = new String[majorSubjects.length + 1];
-        major2Options[0] = "Select Major B (מורחב ב')";
-        System.arraycopy(majorSubjects, 0, major2Options, 1, majorSubjects.length);
-
-        spinnerMajor1.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, major1Options));
-        spinnerMajor2.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, major2Options));
-    }
-
-    private void setupGradeAndClassLogic() {
-        spinnerGrade.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, gradesList));
-
-        spinnerGrade.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position == 0) {
-                    // לא נבחרה שכבה - נועלים את הכיתה
-                    spinnerClassNum.setEnabled(false);
-                    spinnerClassNum.setAdapter(null);
-                } else {
-                    // נבחרה שכבה - פותחים את הכיתה ומאכלסים בנתונים (1 עד 10 כברירת מחדל)
-                    spinnerClassNum.setEnabled(true);
-                    String[] classesList = {"Select Class *", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"};
-                    spinnerClassNum.setAdapter(new ArrayAdapter<>(AddUserActivity.this, android.R.layout.simple_spinner_dropdown_item, classesList));
+                    // הוקוס פוקוס: מכריח את ה-Layout לחשב גבהים מחדש ולא להישאר תקוע
+                    layoutTeacherFields.requestLayout();
                 }
             }
             @Override
@@ -161,40 +128,189 @@ public class AddUserActivity extends BaseMenuActivity {
         });
     }
 
-    private void showSubjectsDialog() {
+    // שליפת המקצועות עבור המורים מה-Firestore
+    private void loadSubjectsFromFirestore() {
+        db.collection("subjects").get().addOnSuccessListener(queryDocumentSnapshots -> {
+            subjectNames.clear();
+            subjectIds.clear();
+
+            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                subjectIds.add(doc.getId());
+                String name = doc.contains("displayName") ? doc.getString("displayName") : doc.getId();
+                subjectNames.add(name);
+            }
+            // אתחול מערך הבוליאנים לפי כמות המקצועות שחזרו מהשרת
+            checkedSubjectsArray = new boolean[subjectNames.size()];
+            updateSubjectsTextView();
+        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load subjects", Toast.LENGTH_SHORT).show());
+    }
+
+    // פתיחת חלונית בחירה מרובה (Multi-Choice Checkboxes)
+    private void showSubjectsMultiChoiceDialog() {
+        if (subjectNames.isEmpty()) {
+            Toast.makeText(this, "No subjects available. Add one first!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] items = subjectNames.toArray(new String[0]);
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Select Teachable Subjects");
         builder.setCancelable(false);
 
-        builder.setMultiChoiceItems(allTeachableSubjects, selectedSubjectsArray, (dialog, which, isChecked) -> {
-            selectedSubjectsArray[which] = isChecked;
+        // הגדרת הצי'קבוקסים עם המצב הנוכחי שלהם
+        builder.setMultiChoiceItems(items, checkedSubjectsArray, (dialog, which, isChecked) -> {
+            checkedSubjectsArray[which] = isChecked;
         });
 
         builder.setPositiveButton("OK", (dialog, which) -> {
-            teachableSubjects.clear();
-            for (int i = 0; i < selectedSubjectsArray.length; i++) {
-                if (selectedSubjectsArray[i]) {
-                    teachableSubjects.add(allTeachableSubjects[i]);
+            chosenSubjectIds.clear();
+            for (int i = 0; i < checkedSubjectsArray.length; i++) {
+                if (checkedSubjectsArray[i]) {
+                    chosenSubjectIds.add(subjectIds.get(i)); // שומר את ה-IDs שנבחרו
                 }
             }
-            if (teachableSubjects.isEmpty()) {
-                tvSelectSubjects.setText("Select Teachable Subjects *");
-            } else {
-                tvSelectSubjects.setText(teachableSubjects.size() + " Subjects Selected");
-            }
+            updateSubjectsTextView();
         });
 
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
-
-        builder.setNeutralButton("Clear All", (dialog, which) -> {
-            for (int i = 0; i < selectedSubjectsArray.length; i++) {
-                selectedSubjectsArray[i] = false;
-            }
-            teachableSubjects.clear();
-            tvSelectSubjects.setText("Select Teachable Subjects *");
-        });
-
+        builder.setNegativeButton("Cancel", null);
         builder.show();
+    }
+
+    // עדכון הטקסט המוצג בתיבה לפי כמות המקצועות שנבחרו
+    // עדכון הטקסט המוצג בתיבה - מציג את שמות המקצועות שנבחרו בפועל!
+    // עדכון כמות המקצועות ויצירת רשימה שורה-אחר-שורה מתחתיה
+    private void updateSubjectsTextView() {
+        // 1. מנקים את הרשימה הויזואלית הקודמת כדי שלא ישוכפלו שורות
+        layoutSelectedSubjectsList.removeAllViews();
+
+        if (chosenSubjectIds.isEmpty()) {
+            tvSelectSubjects.setText("Select Teachable Subjects *");
+            tvSelectSubjects.setTextColor(android.graphics.Color.parseColor("#666666"));
+        } else {
+            // מעדכנים את הכותרת הראשית עם כמות המקצועות שנבחרו
+            tvSelectSubjects.setText(chosenSubjectIds.size() + " Subjects Selected:");
+            tvSelectSubjects.setTextColor(android.graphics.Color.parseColor("#1A237E")); // צבע בולט יותר
+
+            // 2. רצים על כל המקצועות ומייצרים שורה לכל אחד שנבחר
+            for (int i = 0; i < checkedSubjectsArray.length; i++) {
+                if (checkedSubjectsArray[i]) {
+                    String currentSubjectName = subjectNames.get(i);
+
+                    // יצירת TextView חדש לחלוטין בקוד עבור השורה הנוכחית
+                    TextView tvSubjectRow = new TextView(this);
+                    tvSubjectRow.setText("• " + currentSubjectName); // נקודה קטנה בתחילת השורה (Bullet point)
+                    tvSubjectRow.setTextSize(16.0f);
+                    tvSubjectRow.setTextColor(android.graphics.Color.parseColor("#333333"));
+                    tvSubjectRow.setPadding(0, 8, 0, 8); // רווח עדין בין השורות
+
+                    // דוחפים את השורה החדשה לתוך הבלוק מתחת לכפתור
+                    layoutSelectedSubjectsList.addView(tvSubjectRow);
+                }
+            }
+        }
+    }
+
+    // שליפת קבוצות הלמידה לתלמיד (מתוך אוסף classes) וחלוקה לפי סוגים
+    private void loadClassesFromFirestore() {
+        db.collection("classes").get().addOnSuccessListener(queryDocumentSnapshots -> {
+            initListWithPlaceholder(homeroomNames, homeroomIds, "Select Homeroom Class *");
+            initListWithPlaceholder(mathNames, mathIds, "Select Math Group *");
+            initListWithPlaceholder(englishNames, englishIds, "Select English Group *");
+            initListWithPlaceholder(majorNames, majorIds, "Select Major Group (Optional)");
+
+            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                String classId = doc.getId();
+                String className = doc.contains("displayName") ? doc.getString("displayName") : doc.getString("name");
+                String type = doc.getString("type");
+
+                if (type == null) continue;
+
+                switch (type) {
+                    case "homeroom":
+                        homeroomNames.add(className); homeroomIds.add(classId);
+                        break;
+                    case "math":
+                        mathNames.add(className); mathIds.add(classId);
+                        break;
+                    case "english":
+                        englishNames.add(className); englishIds.add(classId);
+                        break;
+                    case "major":
+                        majorNames.add(className); majorIds.add(classId);
+                        break;
+                }
+            }
+
+            spinnerHomeroom.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, homeroomNames));
+            spinnerMathGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathNames));
+            spinnerEnglishGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishNames));
+            spinnerMajor1Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
+            spinnerMajor2Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
+
+        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load classes", Toast.LENGTH_SHORT).show());
+    }
+
+    private void initListWithPlaceholder(ArrayList<String> names, ArrayList<String> ids, String placeholder) {
+        names.clear(); ids.clear();
+        names.add(placeholder); ids.add("");
+    }
+
+    /**
+     * פונקציה שמקפיצה חלונית דיאלוג להוספה מהירה של מקצוע
+     */
+    private void showQuickAddSubjectDialog() {
+        final EditText etInput = new EditText(this);
+        etInput.setHint("Subject Name (e.g., English 5)");
+        etInput.setPadding(40, 32, 40, 32);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Quick Add New Subject")
+                .setMessage("Enter the name of the new subject:")
+                .setView(etInput)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String subjectName = etInput.getText().toString().trim();
+                    if (!subjectName.isEmpty()) {
+                        saveSubjectToFirestoreQuickly(subjectName);
+                    } else {
+                        Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /**
+     * שמירת המקצוע החדש ל-Firestore, עדכון הרשימות וסימונו כאוטומטי!
+     */
+    private void saveSubjectToFirestoreQuickly(String subjectName) {
+        String documentId = subjectName.toLowerCase().replace(" ", "-");
+
+        Map<String, Object> subjectData = new HashMap<>();
+        subjectData.put("displayName", subjectName);
+
+        db.collection("subjects").document(documentId)
+                .set(subjectData)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, subjectName + " Added! 🎉", Toast.LENGTH_SHORT).show();
+
+                    // 1. הוספה לרשימות הכלליות
+                    subjectNames.add(subjectName);
+                    subjectIds.add(documentId);
+
+                    // 2. הגדלת מערך הצי'קבוקסים וסימון המקצוע החדש כ-True אוטומטית!
+                    boolean[] newCheckedArray = new boolean[subjectNames.size()];
+                    System.arraycopy(checkedSubjectsArray, 0, newCheckedArray, 0, checkedSubjectsArray.length);
+                    newCheckedArray[newCheckedArray.length - 1] = true; // המקצוע החדש מסומן ב-V
+                    checkedSubjectsArray = newCheckedArray;
+
+                    // 3. הוספה לרשימת המקצועות הנבחרים של המורה הנוכחי
+                    chosenSubjectIds.add(documentId);
+                    updateSubjectsTextView();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to add subject: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void saveUserToDatabase() {
@@ -212,125 +328,94 @@ public class AddUserActivity extends BaseMenuActivity {
             return;
         }
 
-        if (!isValidIsraeliID(tz)) {
-            etTz.setError("Invalid ID number");
-            etTz.requestFocus();
+        if (!isValidIsraeliID(tz) || !isValidEmail(email)) {
+            Toast.makeText(this, "Please check ID or Email format", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (!isValidEmail(email)) {
-            etEmail.setError("Invalid email address format");
-            etEmail.requestFocus();
-            return;
-        }
+        ArrayList<DocumentReference> studentClassRefs = new ArrayList<>();
+        ArrayList<DocumentReference> teacherSubjectRefs = new ArrayList<>();
 
-        String grade = "", classNum = "", math = "", english = "", major1 = "", major2 = "";
-
-        if (type == 0) { // Student Validation
-            if (spinnerGrade.getSelectedItemPosition() == 0 || spinnerClassNum.getSelectedItemPosition() == 0) {
-                Toast.makeText(this, "Please select Grade and Class No.", Toast.LENGTH_SHORT).show();
+        if (type == 0) { // תלמיד
+            if (spinnerHomeroom.getSelectedItemPosition() == 0 ||
+                    spinnerMathGroup.getSelectedItemPosition() == 0 ||
+                    spinnerEnglishGroup.getSelectedItemPosition() == 0) {
+                Toast.makeText(this, "Please select Homeroom, Math, and English groups!", Toast.LENGTH_LONG).show();
                 return;
             }
 
-            if (spinnerMath.getSelectedItemPosition() == 0 || spinnerEnglish.getSelectedItemPosition() == 0) {
-                Toast.makeText(this, "Please select Math and English levels", Toast.LENGTH_SHORT).show();
-                return;
+            studentClassRefs.add(db.collection("classes").document(homeroomIds.get(spinnerHomeroom.getSelectedItemPosition())));
+            studentClassRefs.add(db.collection("classes").document(mathIds.get(spinnerMathGroup.getSelectedItemPosition())));
+            studentClassRefs.add(db.collection("classes").document(englishIds.get(spinnerEnglishGroup.getSelectedItemPosition())));
+
+            if (spinnerMajor1Group.getSelectedItemPosition() > 0) {
+                studentClassRefs.add(db.collection("classes").document(majorIds.get(spinnerMajor1Group.getSelectedItemPosition())));
+            }
+            if (spinnerMajor2Group.getSelectedItemPosition() > 0) {
+                studentClassRefs.add(db.collection("classes").document(majorIds.get(spinnerMajor2Group.getSelectedItemPosition())));
             }
 
-            // חילוץ המספר בלבד מתוך השכבה (למשל מתוך "10 (י)" נשלוף רק "10")
-            String fullGradeText = spinnerGrade.getSelectedItem().toString();
-            grade = fullGradeText.split(" ")[0];
-            classNum = spinnerClassNum.getSelectedItem().toString();
-
-            math = spinnerMath.getSelectedItem().toString();
-            english = spinnerEnglish.getSelectedItem().toString();
-
-            major1 = spinnerMajor1.getSelectedItemPosition() > 0 ? spinnerMajor1.getSelectedItem().toString() : "";
-            major2 = spinnerMajor2.getSelectedItemPosition() > 0 ? spinnerMajor2.getSelectedItem().toString() : "";
-
-        } else { // Teacher / Admin Validation
-            if (teachableSubjects.isEmpty()) {
+        } else { // מורה או מנהל מערכת
+            if (chosenSubjectIds.isEmpty()) { // וידוא שנבחר לפחות מקצוע אחד
                 Toast.makeText(this, "Please select at least one teachable subject!", Toast.LENGTH_LONG).show();
                 return;
             }
+
+            // הפיכת כל רשימת ה-IDs שנבחרו לרפרנסים של פיירבייס!
+            for (String subId : chosenSubjectIds) {
+                teacherSubjectRefs.add(db.collection("subjects").document(subId));
+            }
         }
 
-        final String finalGrade = grade, finalClassNum = classNum, finalMath = math, finalEnglish = english, finalMajor1 = major1, finalMajor2 = major2;
+        db.collection("users").document(tz).get().addOnSuccessListener(documentSnapshot -> {
+            if (documentSnapshot.exists()) {
+                etTz.setError("User already exists!");
+            } else {
+                String fullName = firstName + (middleName.isEmpty() ? "" : " " + middleName) + " " + lastName;
 
-        db.collection("users").document(tz).get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        etTz.setError("User with this ID already exists!");
-                        etTz.requestFocus();
-                    } else {
-                        String fullName = firstName;
-                        if (!middleName.isEmpty()) {
-                            fullName += " " + middleName;
-                        }
-                        fullName += " " + lastName;
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("email", email);
+                userMap.put("password", password);
+                userMap.put("type", type);
+                userMap.put("name", fullName);
+                userMap.put("firstName", firstName);
+                userMap.put("lastName", lastName);
 
-                        Map<String, Object> userMap = new HashMap<>();
-                        userMap.put("email", email);
-                        userMap.put("password", password);
-                        userMap.put("type", type);
-                        userMap.put("name", fullName);
-                        userMap.put("firstName", firstName);
-                        userMap.put("lastName", lastName);
-                        userMap.put("middleName", middleName);
+                if (type == 0) {
+                    userMap.put("classes", studentClassRefs);
+                } else {
+                    userMap.put("teachableSubjects", teacherSubjectRefs); // נשמר כמערך רפרנסים מלא
+                }
 
-                        if (type == 0) {
-                            userMap.put("grade", Integer.parseInt(finalGrade));
-                            userMap.put("classNum", Integer.parseInt(finalClassNum));
-                            userMap.put("mathClass", finalMath);
-                            userMap.put("englishClass", finalEnglish);
-                            userMap.put("major1", finalMajor1);
-                            userMap.put("major2", finalMajor2);
-                        } else {
-                            userMap.put("teachableSubjects", teachableSubjects);
-                        }
-
-                        db.collection("users").document(tz)
-                                .set(userMap)
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(AddUserActivity.this, "User saved! ✅", Toast.LENGTH_SHORT).show();
-                                    clearForm();
-                                })
-                                .addOnFailureListener(e -> Toast.makeText(AddUserActivity.this, "Error saving user: " + e.getMessage(), Toast.LENGTH_LONG).show());
-                    }
-                })
-                .addOnFailureListener(e -> Toast.makeText(AddUserActivity.this, "Error checking database: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                db.collection("users").document(tz).set(userMap).addOnSuccessListener(aVoid -> {
+                    Toast.makeText(AddUserActivity.this, "User saved successfully! ✅", Toast.LENGTH_SHORT).show();
+                    clearForm();
+                });
+            }
+        });
     }
 
     private void clearForm() {
-        etTz.setText("");
-        etFirstName.setText("");
-        etLastName.setText("");
-        etMiddleName.setText("");
-        etEmail.setText("");
-        etPassword.setText("");
-
-        spinnerGrade.setSelection(0);
-        spinnerClassNum.setEnabled(false);
-        spinnerClassNum.setAdapter(null);
-
-        spinnerMath.setSelection(0);
-        spinnerEnglish.setSelection(0);
-        spinnerMajor1.setSelection(0);
-        spinnerMajor2.setSelection(0);
-
-        for (int i = 0; i < selectedSubjectsArray.length; i++) {
-            selectedSubjectsArray[i] = false;
-        }
-        teachableSubjects.clear();
-        tvSelectSubjects.setText("Select Teachable Subjects *");
-
+        etTz.setText(""); etFirstName.setText(""); etLastName.setText(""); etMiddleName.setText(""); etEmail.setText(""); etPassword.setText("");
         spinnerRole.setSelection(0);
-        etTz.requestFocus();
+        spinnerHomeroom.setSelection(0); spinnerMathGroup.setSelection(0); spinnerEnglishGroup.setSelection(0);
+        spinnerMajor1Group.setSelection(0); spinnerMajor2Group.setSelection(0);
+
+        chosenSubjectIds.clear();
+        if (checkedSubjectsArray != null) {
+            for (int i = 0; i < checkedSubjectsArray.length; i++) checkedSubjectsArray[i] = false;
+        }
+
+        // מנקה גם את התצוגה הויזואלית של השורות
+        if (layoutSelectedSubjectsList != null) {
+            layoutSelectedSubjectsList.removeAllViews();
+        }
+        updateSubjectsTextView();
     }
 
     private boolean isValidIsraeliID(String id) {
-        if (id == null || id.length() > 9 || !id.matches("\\d+")) { return false; }
-        while (id.length() < 9) { id = "0" + id; }
+        if (id == null || id.length() > 9 || !id.matches("\\d+")) return false;
+        while (id.length() < 9) id = "0" + id;
         int sum = 0;
         for (int i = 0; i < 9; i++) {
             int digit = id.charAt(i) - '0';

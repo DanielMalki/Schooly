@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:gravity="center_vertical"
+    android:background="@drawable/rounded_edittext_bg"
+    android:layout_marginBottom="8dp">
+
+    <Spinner
+        android:id="@+id/spinnerSubjectInPair"
+        android:layout_width="0dp"
+        android:layout_height="45dp"
+        android:layout_weight="1"
+        android:background="#F1F1F1"
+        android:layout_marginEnd="4dp"/>
+
+    <Spinner
+        android:id="@+id/spinnerTeacherInPair"
+        android:layout_width="0dp"
+        android:layout_height="45dp"
+        android:layout_weight="1"
+        android:background="#F1F1F1"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"/>
+
+    <ImageButton
+        android:id="@+id/btnRemovePair"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:src="@android:drawable/ic_delete"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="#D32F2F"
+        android:contentDescription="Remove assignment" />
+</LinearLayout>

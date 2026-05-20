@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="20dp"
@@ -131,57 +132,41 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="3. Student Academic Info:"
+                android:text="3. Assign Student to Learning Groups:"
                 android:textStyle="bold"
                 android:textColor="#FF5722"
                 android:layout_marginBottom="10dp"/>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="10dp">
-
-                <Spinner
-                    android:id="@+id/spinnerGrade"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="50dp"
-                    android:background="#FFF3E0"
-                    android:layout_marginEnd="5dp"/>
-
-                <Spinner
-                    android:id="@+id/spinnerClassNum"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="50dp"
-                    android:background="#FFF3E0"
-                    android:layout_marginStart="5dp"
-                    android:enabled="false"/> </LinearLayout>
-
             <Spinner
-                android:id="@+id/spinnerMath"
+                android:id="@+id/spinnerHomeroom"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:layout_marginBottom="10dp"
                 android:background="#FFF3E0"/>
 
             <Spinner
-                android:id="@+id/spinnerEnglish"
+                android:id="@+id/spinnerMathGroup"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:layout_marginBottom="10dp"
                 android:background="#FFF3E0"/>
 
             <Spinner
-                android:id="@+id/spinnerMajor1"
+                android:id="@+id/spinnerEnglishGroup"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:layout_marginBottom="10dp"
                 android:background="#FFF3E0"/>
 
             <Spinner
-                android:id="@+id/spinnerMajor2"
+                android:id="@+id/spinnerMajor1Group"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginBottom="10dp"
+                android:background="#FFF3E0"/>
+
+            <Spinner
+                android:id="@+id/spinnerMajor2Group"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:layout_marginBottom="15dp"
@@ -193,28 +178,57 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:paddingTop="10dp"
             android:visibility="gone">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="3. Teacher / Admin Settings:"
+                android:text="3. Teacher / Admin Subjects Setup:"
                 android:textStyle="bold"
                 android:textColor="#2E8B57"
                 android:layout_marginBottom="10dp"/>
 
-            <TextView
-                android:id="@+id/tvSelectSubjects"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:text="Select Teachable Subjects *"
-                android:background="#E8F5E9"
-                android:padding="10dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:textSize="16sp"
+                android:layout_marginBottom="10dp">
+
+                <TextView
+                    android:id="@+id/tvSelectSubjects"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:text="Select Teachable Subjects *"
+                    android:textColor="#666666"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:background="@drawable/rounded_edittext_bg"
+                    android:clickable="true"
+                    android:focusable="true"/>
+
+                <ImageButton
+                    android:id="@+id/btnQuickAddSubject"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@android:drawable/ic_input_add"
+                    android:backgroundTint="#1A237E"
+                    app:tint="@android:color/white"
+                    android:background="@drawable/rounded_edittext_bg"
+                    android:contentDescription="Quick add subject" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutSelectedSubjectsList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:layout_marginBottom="15dp"
-                android:clickable="true"
-                android:focusable="true"/>
+                android:paddingStart="10dp" />
+
         </LinearLayout>
 
         <Button

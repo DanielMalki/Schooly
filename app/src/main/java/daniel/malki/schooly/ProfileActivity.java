@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,23 +18,32 @@ import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.bumptech.glide.Glide;
 import com.google.firebase.firestore.Blob;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import com.google.firebase.firestore.FieldValue;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class ProfileActivity extends BaseMenuActivity {
 
     private ImageView imgAvatar;
     private TextView tvFullName, tvRole;
-    private TextView valueFirstName, valueLastName, valueId;
-    private View cardAcademicInfo;
-    private TextView valueClassGrade, valueMath, valueEnglish, valueMajors;
+
+    private int userType = 0;
+
+    // קונטיינרים דינמיים להצגת המידע החדש
+    // שנה את זה מ-LinearLayout ל-MaterialCardView
+    private com.google.android.material.card.MaterialCardView cardAcademicInfo;
+    private TextView tvAcademicHeader;
+    private LinearLayout layoutDynamicInfoContainer;
 
     private FirebaseFirestore db;
-
     private ActivityResultLauncher<Intent> galleryLauncher;
     private ActivityResultLauncher<Void> cameraLauncher;
 
@@ -47,26 +57,18 @@ public class ProfileActivity extends BaseMenuActivity {
         imgAvatar = findViewById(R.id.imgAvatar);
         tvFullName = findViewById(R.id.tvFullName);
         tvRole = findViewById(R.id.tvRole);
-        valueFirstName = findViewById(R.id.valueFirstName);
-        valueLastName = findViewById(R.id.valueLastName);
-        valueId = findViewById(R.id.valueId);
 
         cardAcademicInfo = findViewById(R.id.cardAcademicInfo);
-        valueClassGrade = findViewById(R.id.valueClassGrade);
-        valueMath = findViewById(R.id.valueMath);
-        valueEnglish = findViewById(R.id.valueEnglish);
-        valueMajors = findViewById(R.id.valueMajors);
+        tvAcademicHeader = findViewById(R.id.tvAcademicHeader);
+        layoutDynamicInfoContainer = findViewById(R.id.layoutDynamicInfoContainer);
 
-        // 1. לאנצ'ר גלריה
+        // לאנצ'ר גלריה
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         Uri selectedImageUri = result.getData().getData();
                         imgAvatar.setImageURI(selectedImageUri);
-                        imgAvatar.setImageTintList(null);
-
-                        // קריאת התמונה מהגלריה והעלאתה כ-Blob
                         try {
                             Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
                             saveImageAsBlob(bitmap);
@@ -77,15 +79,12 @@ public class ProfileActivity extends BaseMenuActivity {
                 }
         );
 
-        // 2. לאנצ'ר מצלמה
+        // לאנצ'ר מצלמה
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.TakePicturePreview(),
                 bitmap -> {
                     if (bitmap != null) {
                         imgAvatar.setImageBitmap(bitmap);
-                        imgAvatar.setImageTintList(null);
-
-                        // העלאת התמונה מהמצלמה כ-Blob
                         saveImageAsBlob(bitmap);
                     }
                 }
@@ -101,137 +100,300 @@ public class ProfileActivity extends BaseMenuActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Update Profile Picture");
         builder.setItems(options, (dialog, which) -> {
-            if (which == 0) {
-                cameraLauncher.launch(null);
-            } else if (which == 1) {
+            if (which == 0) cameraLauncher.launch(null);
+            else if (which == 1) {
                 Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 galleryLauncher.launch(intent);
-            } else if (which == 2) {
-                removeProfilePicture(); // הפונקציה החדשה שלנו שניצור עכשיו
-            } else {
-                dialog.dismiss();
-            }
+            } else if (which == 2) removeProfilePicture();
+            else dialog.dismiss();
         });
         builder.show();
     }
-
-    /* ---------------- שמירת התמונה כ-Blob ב-Firestore ---------------- */
 
     private void saveImageAsBlob(Bitmap originalBitmap) {
         String userId = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE).getString("userId", "");
         if (userId.isEmpty()) return;
 
-        Toast.makeText(this, "Saving profile picture...", Toast.LENGTH_SHORT).show();
-
-        // 1. כיווץ התמונה כדי שלא נעבור את המגבלה של 1MB של פיירסטור
-        int maxWidth = 400; // גודל מקסימלי לתמונת פרופיל
+        int maxWidth = 400;
         int maxHeight = 400;
         float scale = Math.min(((float)maxWidth / originalBitmap.getWidth()), ((float)maxHeight / originalBitmap.getHeight()));
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(originalBitmap,
-                (int)(originalBitmap.getWidth() * scale),
-                (int)(originalBitmap.getHeight() * scale), true);
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(originalBitmap, (int)(originalBitmap.getWidth() * scale), (int)(originalBitmap.getHeight() * scale), true);
 
-        // 2. המרה של ה-Bitmap למערך בייטים (Byte Array) באיכות נמוכה יותר
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos); // איכות 70%
+        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
         byte[] data = baos.toByteArray();
 
-        // 3. יצירת ה-Blob ושמירה במסמך של המשתמש
         Blob blob = Blob.fromBytes(data);
         db.collection("users").document(userId).update("profileImageBlob", blob)
-                .addOnSuccessListener(aVoid -> Toast.makeText(this, "Picture saved perfectly! 🚀", Toast.LENGTH_SHORT).show())
-                .addOnFailureListener(e -> Toast.makeText(this, "Error saving picture", Toast.LENGTH_SHORT).show());
+                .addOnSuccessListener(aVoid -> Toast.makeText(this, "Picture saved perfectly! 🚀", Toast.LENGTH_SHORT).show());
     }
 
     private void removeProfilePicture() {
         String userId = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE).getString("userId", "");
         if (userId.isEmpty()) return;
 
-        Toast.makeText(this, "Removing picture...", Toast.LENGTH_SHORT).show();
-
-        // מוחק את שדה התמונה מהמסמך של המשתמש ב-Firestore
         db.collection("users").document(userId).update("profileImageBlob", FieldValue.delete())
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Picture removed successfully", Toast.LENGTH_SHORT).show();
-
-                    // מנקה את התמונה הקיימת מ-Glide
                     Glide.with(this).clear(imgAvatar);
-
-                    // מחזיר את האייקון הריק (שים לב: אם יש לך אייקון ברירת מחדל אחר, שנה את השם פה)
                     imgAvatar.setImageResource(R.drawable.ic_launcher_foreground);
-
-                })
-                .addOnFailureListener(e -> Toast.makeText(this, "Error removing picture", Toast.LENGTH_SHORT).show());
+                });
     }
-
-    /* ---------------- טעינת נתונים (ותמונת פרופיל) ---------------- */
 
     private void loadUserData() {
         SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
         String fullName = prefs.getString("userName", "Guest");
         String id = prefs.getString("userId", "");
-        int type = prefs.getInt("userType", 0);
+
+        // תיקון: משתמשים במשתנה הגלובלי במקום להגדיר int חדש
+        userType = prefs.getInt("userType", 0);
 
         tvFullName.setText(fullName);
-        tvRole.setText(getRoleName(type));
-        valueId.setText(id);
+        tvRole.setText(getRoleName(userType)); // עודכן ל-userType
 
-        if (fullName != null && !fullName.isEmpty()) {
-            String[] parts = fullName.split(" ");
-            if (parts.length > 0) valueFirstName.setText(parts[0]);
-            if (parts.length > 1) {
-                valueLastName.setText(fullName.substring(parts[0].length()).trim());
-            } else valueLastName.setText("");
-        }
+        // ... שאר קוד טעינת התמונה והניקוי ...
 
-        // טעינת תמונת הפרופיל (Blob) מה-Firestore
-        db.collection("users").document(id).get().addOnSuccessListener(doc -> {
-            if (doc.exists()) {
-                Blob blob = doc.getBlob("profileImageBlob");
-                if (blob != null) {
-                    // הופכים את ה-Blob בחזרה לבייטים, ו-Glide יודע לצייר אותם!
-                    byte[] imageBytes = blob.toBytes();
-                    Glide.with(this)
-                            .load(imageBytes)
-                            .circleCrop() // תמונה עגולה
-                            .into(imgAvatar);
-                    imgAvatar.setImageTintList(null);
-                }
-            }
-        });
-
-        if (type == 0) {
+        if (userType == 0) { // עודכן ל-userType
             cardAcademicInfo.setVisibility(View.VISIBLE);
-            fetchStudentAcademicInfo(id);
+            tvAcademicHeader.setText("My Learning Groups & Teachers");
+            fetchStudentCourses(id);
+        } else if (userType == 1 || userType == 2) { // עודכן ל-userType
+            cardAcademicInfo.setVisibility(View.VISIBLE);
+            tvAcademicHeader.setText("My Teachable Subjects");
+            fetchTeacherSubjects(id);
         } else {
             cardAcademicInfo.setVisibility(View.GONE);
         }
     }
 
-    private void fetchStudentAcademicInfo(String userId) {
-        db.collection("users").document(userId).get().addOnSuccessListener(documentSnapshot -> {
-            if (documentSnapshot.exists()) {
-                String grade = documentSnapshot.getString("grade");
-                String classNum = documentSnapshot.getString("classNum");
-                String mathClass = documentSnapshot.getString("mathClass");
-                String englishClass = documentSnapshot.getString("englishClass");
-                String major1 = documentSnapshot.getString("major1");
-                String major2 = documentSnapshot.getString("major2");
+    /* ---------------- לוגיקת תלמיד: שליפת קבוצות ומורים ---------------- */
+    private void fetchStudentCourses(String studentId) {
+        db.collection("users").document(studentId).get().addOnSuccessListener(documentSnapshot -> {
+            if (!documentSnapshot.exists()) return;
 
-                valueClassGrade.setText(grade + " - " + classNum);
-                valueMath.setText(mathClass != null ? mathClass : "N/A");
-                valueEnglish.setText(englishClass != null ? englishClass : "N/A");
+            List<DocumentReference> classRefs = (List<DocumentReference>) documentSnapshot.get("classes");
+            if (classRefs == null || classRefs.isEmpty()) {
+                addNoDataTextView("Not assigned to any learning groups yet.");
+                return;
+            }
 
-                String majorsText = "";
-                if (major1 != null && !major1.isEmpty()) majorsText += major1;
-                if (major2 != null && !major2.isEmpty()) {
-                    if (!majorsText.isEmpty()) majorsText += ", ";
-                    majorsText += major2;
-                }
-                if (majorsText.isEmpty()) majorsText = "No Majors";
-                valueMajors.setText(majorsText);
+            for (DocumentReference classRef : classRefs) {
+                classRef.get().addOnSuccessListener(classDoc -> {
+                    if (!classDoc.exists()) return;
+
+                    String className = classDoc.getString("displayName");
+                    String classType = classDoc.getString("type");
+
+                    if ("homeroom".equals(classType)) {
+                        addCourseRowView("🏠 Homeroom Class: " + className, "");
+                    } else {
+                        List<Map<String, Object>> assignments = (List<Map<String, Object>>) classDoc.get("course_assignments");
+                        final String[] teacherNameContainer = {"Teacher: Unknown"};
+
+                        if (assignments != null) {
+                            for (Map<String, Object> assignment : assignments) {
+                                DocumentReference teacherRef = (DocumentReference) assignment.get("teacher");
+                                if (teacherRef != null) {
+                                    teacherRef.get().addOnSuccessListener(teacherDoc -> {
+                                        if (teacherDoc.exists()) {
+                                            teacherNameContainer[0] = "Teacher: " + teacherDoc.getString("name");
+                                            addCourseRowView("📚 " + className, teacherNameContainer[0]);
+                                        }
+                                    });
+                                    break;
+                                }
+                            }
+                        } else {
+                            addCourseRowView("📚 " + className, teacherNameContainer[0]);
+                        }
+                    }
+                });
             }
         });
+    }
+
+    /* ---------------- לוגיקת מורה: מקצוע -> כיתות -> תלמידים ---------------- */
+    private void fetchTeacherSubjects(String teacherId) {
+        DocumentReference teacherRef = db.collection("users").document(teacherId);
+
+        teacherRef.get().addOnSuccessListener(documentSnapshot -> {
+            if (!documentSnapshot.exists()) return;
+
+            List<DocumentReference> subjectRefs = (List<DocumentReference>) documentSnapshot.get("teachableSubjects");
+            if (subjectRefs == null || subjectRefs.isEmpty()) {
+                // עכשיו הקוד מכיר את userType הגלובלי!
+                if (userType == 2) {
+                    cardAcademicInfo.setVisibility(View.GONE);
+                } else {
+                    addNoDataTextView("No subjects assigned to you yet.");
+                }
+                return;
+            }
+
+            for (DocumentReference subRef : subjectRefs) {
+                subRef.get().addOnSuccessListener(subDoc -> {
+                    if (!subDoc.exists()) return;
+
+                    String subjectName = subDoc.getString("displayName");
+
+                    // 1. הוספת כותרת למקצוע
+                    addSubjectHeaderView("📖 " + subjectName);
+
+                    // 2. מציאת כיתות של המורה הספציפי במקצוע הספציפי
+                    findClassesForTeacherAndSubject(teacherRef, subRef);
+                });
+            }
+        });
+    }
+
+    private void findClassesForTeacherAndSubject(DocumentReference teacherRef, DocumentReference subRef) {
+        db.collection("classes").get().addOnSuccessListener(queryDocumentSnapshots -> {
+            boolean foundAnyClass = false;
+
+            for (QueryDocumentSnapshot classDoc : queryDocumentSnapshots) {
+                List<Map<String, Object>> assignments = (List<Map<String, Object>>) classDoc.get("course_assignments");
+
+                if (assignments != null) {
+                    for (Map<String, Object> assignment : assignments) {
+                        DocumentReference assignedTeacherRef = (DocumentReference) assignment.get("teacher");
+                        DocumentReference assignedSubRef = (DocumentReference) assignment.get("subject");
+
+                        if (assignedTeacherRef != null && assignedTeacherRef.getPath().equals(teacherRef.getPath()) &&
+                                assignedSubRef != null && assignedSubRef.getPath().equals(subRef.getPath())) {
+
+                            foundAnyClass = true;
+                            String className = classDoc.getString("displayName");
+                            DocumentReference classRef = classDoc.getReference();
+
+                            // הוספת שורת כיתה לחיצה עם הזחה (Padding שמאלי)
+                            View classRow = addClassRowView("    Class: " + className, "Tap to view student roster 👥");
+                            classRow.setOnClickListener(v -> showStudentsForClassDialog(className, classRef));
+                        }
+                    }
+                }
+            }
+
+            if (!foundAnyClass) {
+                addNoDataTextView("    No active classes assigned for this subject yet.");
+            }
+        });
+    }
+
+    private void showStudentsForClassDialog(String className, DocumentReference classRef) {
+        db.collection("users")
+                .whereEqualTo("type", 0)
+                .get()
+                .addOnSuccessListener(userDocs -> {
+                    List<StudentHolder> studentsList = new ArrayList<>();
+
+                    for (QueryDocumentSnapshot userDoc : userDocs) {
+                        List<DocumentReference> studentClasses = (List<DocumentReference>) userDoc.get("classes");
+                        if (studentClasses != null) {
+                            for (DocumentReference sClassRef : studentClasses) {
+                                if (sClassRef.getPath().equals(classRef.getPath())) {
+                                    String name = userDoc.getString("name");
+                                    String lastName = userDoc.getString("lastName");
+                                    if (name != null) {
+                                        studentsList.add(new StudentHolder(name, lastName != null ? lastName : ""));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (studentsList.isEmpty()) {
+                        new AlertDialog.Builder(this)
+                                .setTitle(className + " - Student Roster")
+                                .setMessage("No students enrolled in this class yet.")
+                                .setPositiveButton("Close", null).show();
+                        return;
+                    }
+
+                    // מיון לפי א'-ב' שם משפחה
+                    Collections.sort(studentsList, (s1, s2) -> s1.lastName.compareToIgnoreCase(s2.lastName));
+
+                    StringBuilder builder = new StringBuilder();
+                    for (int i = 0; i < studentsList.size(); i++) {
+                        builder.append((i + 1)).append(". ").append(studentsList.get(i).fullName).append("\n");
+                    }
+
+                    new AlertDialog.Builder(this)
+                            .setTitle(className + " - Student Roster (" + studentsList.size() + " students)")
+                            .setMessage(builder.toString())
+                            .setPositiveButton("Close", null)
+                            .show();
+                });
+    }
+
+    // מחלקת עזר למיון
+    private static class StudentHolder {
+        String fullName;
+        String lastName;
+        StudentHolder(String fullName, String lastName) {
+            this.fullName = fullName;
+            this.lastName = lastName;
+        }
+    }
+
+    /* ---------------- עזרים ויזואליים להזרקה דינמית ---------------- */
+    private void addSubjectHeaderView(String subjectText) {
+        TextView tv = new TextView(this);
+        tv.setText(subjectText);
+        tv.setTextSize(17f);
+        tv.setTypeface(null, android.graphics.Typeface.BOLD);
+        tv.setTextColor(android.graphics.Color.parseColor("#1A237E"));
+        tv.setPadding(10, 25, 10, 5);
+        layoutDynamicInfoContainer.addView(tv);
+    }
+
+    private View addClassRowView(String mainText, String subText) {
+        View rowView = getLayoutInflater().inflate(android.R.layout.simple_list_item_2, null);
+        TextView text1 = rowView.findViewById(android.R.id.text1);
+        TextView text2 = rowView.findViewById(android.R.id.text2);
+
+        text1.setText(mainText);
+        text1.setTextSize(15f);
+        text1.setTextColor(android.graphics.Color.parseColor("#333333"));
+
+        text2.setText(subText);
+        text2.setTextSize(13f);
+        text2.setTextColor(android.graphics.Color.parseColor("#777777"));
+
+        rowView.setPadding(30, 10, 10, 10);
+
+        android.util.TypedValue outValue = new android.util.TypedValue();
+        getTheme().resolveAttribute(android.R.layout.simple_list_item_2, outValue, true);
+        rowView.setBackgroundResource(android.R.drawable.list_selector_background);
+
+        layoutDynamicInfoContainer.addView(rowView);
+        return rowView;
+    }
+
+    private View addCourseRowView(String mainText, String subText) {
+        View rowView = getLayoutInflater().inflate(android.R.layout.simple_list_item_2, null);
+        TextView text1 = rowView.findViewById(android.R.id.text1);
+        TextView text2 = rowView.findViewById(android.R.id.text2);
+
+        text1.setText(mainText);
+        text1.setTextSize(16f);
+        text1.setTextColor(android.graphics.Color.parseColor("#333333"));
+
+        text2.setText(subText);
+        text2.setTextSize(14f);
+        text2.setTextColor(android.graphics.Color.parseColor("#666666"));
+
+        rowView.setPadding(10, 15, 10, 15);
+        layoutDynamicInfoContainer.addView(rowView);
+        return rowView;
+    }
+
+    private void addNoDataTextView(String message) {
+        TextView tv = new TextView(this);
+        tv.setText(message);
+        tv.setTextSize(14f);
+        tv.setTextColor(android.graphics.Color.GRAY);
+        tv.setPadding(10, 10, 10, 10);
+        layoutDynamicInfoContainer.addView(tv);
     }
 
     private String getRoleName(int type) {
@@ -244,7 +406,5 @@ public class ProfileActivity extends BaseMenuActivity {
     }
 
     @Override
-    protected int getLayoutResourceId() {
-        return R.layout.activity_profile;
-    }
+    protected int getLayoutResourceId() { return R.layout.activity_profile; }
 }
