@@ -39,6 +39,32 @@
             android:layout_marginBottom="20dp"
             android:background="#EEEEEE"/>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="School Assignment:"
+            android:textStyle="bold"
+            android:layout_marginBottom="5dp"
+            android:textColor="#333333"/>
+
+        <EditText
+            android:id="@+id/etSchoolLocked"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="#E0E0E0"
+            android:focusable="false"
+            android:clickable="false"
+            android:padding="10dp"
+            android:textColor="#555555"
+            android:visibility="gone"/>
+
+        <Spinner
+            android:id="@+id/spinnerSchoolSelect"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="#EEEEEE"
+            android:visibility="gone"/>
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

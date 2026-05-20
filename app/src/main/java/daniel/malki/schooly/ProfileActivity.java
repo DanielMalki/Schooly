@@ -91,7 +91,12 @@ public class ProfileActivity extends BaseMenuActivity {
         );
 
         imgAvatar.setOnClickListener(v -> showImageSourceDialog());
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // הקוד הזה ירוץ בכל פעם שנכנסים או חוזרים למסך הזה!
         loadUserData();
     }
 
@@ -124,8 +129,14 @@ public class ProfileActivity extends BaseMenuActivity {
         byte[] data = baos.toByteArray();
 
         Blob blob = Blob.fromBytes(data);
+
         db.collection("users").document(userId).update("profileImageBlob", blob)
-                .addOnSuccessListener(aVoid -> Toast.makeText(this, "Picture saved perfectly! 🚀", Toast.LENGTH_SHORT).show());
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Picture saved perfectly! 🚀", Toast.LENGTH_SHORT).show();
+
+                    // התיקון: זה חייב לרוץ כאן בפנים, רק אחרי שהשמירה בשרת הסתיימה!
+                    updateHeaderInfo();
+                });
     }
 
     private void removeProfilePicture() {
@@ -145,19 +156,43 @@ public class ProfileActivity extends BaseMenuActivity {
         String fullName = prefs.getString("userName", "Guest");
         String id = prefs.getString("userId", "");
 
-        // תיקון: משתמשים במשתנה הגלובלי במקום להגדיר int חדש
+        // משתמשים במשתנה הגלובלי
         userType = prefs.getInt("userType", 0);
 
         tvFullName.setText(fullName);
-        tvRole.setText(getRoleName(userType)); // עודכן ל-userType
+        tvRole.setText(getRoleName(userType));
 
-        // ... שאר קוד טעינת התמונה והניקוי ...
+        // [תיקון קריטי] - פנייה ל-FireStore כדי לטעון את תמונת הפרופיל העדכנית ביותר!
+        if (!id.isEmpty()) {
+            db.collection("users").document(id).get().addOnSuccessListener(documentSnapshot -> {
+                if (documentSnapshot.exists() && documentSnapshot.getBlob("profileImageBlob") != null) {
+                    byte[] imageBytes = documentSnapshot.getBlob("profileImageBlob").toBytes();
 
-        if (userType == 0) { // עודכן ל-userType
+                    // טעינת התמונה המעודכנת בעיגול לתוך ה-ImageView של הפרופיל
+                    com.bumptech.glide.Glide.with(this)
+                            .load(imageBytes)
+                            .circleCrop()
+                            .into(imgAvatar); // ודא שזה ה-ID של ה-ImageView במסך הפרופיל
+                } else {
+                    // תמונת ברירת מחדל אם אין עדיין תמונה ב-Database
+                    imgAvatar.setImageResource(android.R.drawable.sym_def_app_icon);
+                }
+            }).addOnFailureListener(e -> {
+                android.util.Log.e("ProfileActivity", "Error loading image: " + e.getMessage());
+            });
+        }
+
+        // ניקוי המכולה הדינמית לפני טעינה מחדש (מונע כפילויות כשחוזרים למסך!)
+        if (layoutDynamicInfoContainer != null) {
+            layoutDynamicInfoContainer.removeAllViews();
+        }
+
+        // בדיקת סוג המשתמש וטעינת הקורסים/מקצועות
+        if (userType == 0) {
             cardAcademicInfo.setVisibility(View.VISIBLE);
             tvAcademicHeader.setText("My Learning Groups & Teachers");
             fetchStudentCourses(id);
-        } else if (userType == 1 || userType == 2) { // עודכן ל-userType
+        } else if (userType == 1 || userType == 2) {
             cardAcademicInfo.setVisibility(View.VISIBLE);
             tvAcademicHeader.setText("My Teachable Subjects");
             fetchTeacherSubjects(id);
@@ -213,6 +248,8 @@ public class ProfileActivity extends BaseMenuActivity {
     }
 
     /* ---------------- לוגיקת מורה: מקצוע -> כיתות -> תלמידים ---------------- */
+    /* ---------------- לוגיקת מורה מתוקנת: שמירה על סדר היררכי ---------------- */
+
     private void fetchTeacherSubjects(String teacherId) {
         DocumentReference teacherRef = db.collection("users").document(teacherId);
 
@@ -221,7 +258,6 @@ public class ProfileActivity extends BaseMenuActivity {
 
             List<DocumentReference> subjectRefs = (List<DocumentReference>) documentSnapshot.get("teachableSubjects");
             if (subjectRefs == null || subjectRefs.isEmpty()) {
-                // עכשיו הקוד מכיר את userType הגלובלי!
                 if (userType == 2) {
                     cardAcademicInfo.setVisibility(View.GONE);
                 } else {
@@ -236,17 +272,25 @@ public class ProfileActivity extends BaseMenuActivity {
 
                     String subjectName = subDoc.getString("displayName");
 
-                    // 1. הוספת כותרת למקצוע
-                    addSubjectHeaderView("📖 " + subjectName);
+                    // 1. מייצרים קופסה פנימית ייעודית למקצוע הספציפי הזה
+                    LinearLayout subjectBlock = new LinearLayout(this);
+                    subjectBlock.setOrientation(LinearLayout.VERTICAL);
 
-                    // 2. מציאת כיתות של המורה הספציפי במקצוע הספציפי
-                    findClassesForTeacherAndSubject(teacherRef, subRef);
+                    // 2. מייצרים את כותרת המקצוע ומכניסים אותה לתוך הקופסה של המקצוע
+                    addSubjectHeaderToBlock(subjectBlock, "📖 " + subjectName);
+
+                    // 3. מוסיפים את כל הקופסה (עם הכותרת בינתיים) לתוך המיכל הראשי על המסך
+                    layoutDynamicInfoContainer.addView(subjectBlock);
+
+                    // 4. שולחים את הקופסה הספציפית הזו כדי שהכיתות ייכנסו בתוכה!
+                    findClassesForTeacherAndSubject(teacherRef, subRef, subjectBlock);
                 });
             }
         });
     }
 
-    private void findClassesForTeacherAndSubject(DocumentReference teacherRef, DocumentReference subRef) {
+    // שינוי קטן: הפונקציה מקבלת עכשיו גם את ה-LinearLayout של המקצוע הספציפי
+    private void findClassesForTeacherAndSubject(DocumentReference teacherRef, DocumentReference subRef, LinearLayout subjectBlock) {
         db.collection("classes").get().addOnSuccessListener(queryDocumentSnapshots -> {
             boolean foundAnyClass = false;
 
@@ -265,16 +309,25 @@ public class ProfileActivity extends BaseMenuActivity {
                             String className = classDoc.getString("displayName");
                             DocumentReference classRef = classDoc.getReference();
 
-                            // הוספת שורת כיתה לחיצה עם הזחה (Padding שמאלי)
-                            View classRow = addClassRowView("    Class: " + className, "Tap to view student roster 👥");
+                            // מייצרים את שורת הכיתה
+                            View classRow = createClassRowView("    Class: " + className, "Tap to view student roster 👥");
                             classRow.setOnClickListener(v -> showStudentsForClassDialog(className, classRef));
+
+                            // תיקון קריטי: מוסיפים את הכיתה לתוך הבלוק של המקצוע שלה, ולא למיכל הכללי!
+                            subjectBlock.addView(classRow);
                         }
                     }
                 }
             }
 
             if (!foundAnyClass) {
-                addNoDataTextView("    No active classes assigned for this subject yet.");
+                // אם אין כיתות למקצוע, נוסיף את הודעת ה-"אין מידע" לתוך בלוק המקצוע
+                TextView tvNoData = new TextView(this);
+                tvNoData.setText("    No active classes assigned for this subject yet.");
+                tvNoData.setTextSize(13f);
+                tvNoData.setTextColor(android.graphics.Color.GRAY);
+                tvNoData.setPadding(10, 5, 10, 5);
+                subjectBlock.addView(tvNoData);
             }
         });
     }
@@ -336,14 +389,38 @@ public class ProfileActivity extends BaseMenuActivity {
     }
 
     /* ---------------- עזרים ויזואליים להזרקה דינמית ---------------- */
-    private void addSubjectHeaderView(String subjectText) {
+    // פונקציה חדשה שמזריקה את הכותרת ישירות לבלוק המקצוע שלו
+    private void addSubjectHeaderToBlock(LinearLayout subjectBlock, String subjectText) {
         TextView tv = new TextView(this);
         tv.setText(subjectText);
         tv.setTextSize(17f);
         tv.setTypeface(null, android.graphics.Typeface.BOLD);
         tv.setTextColor(android.graphics.Color.parseColor("#1A237E"));
         tv.setPadding(10, 25, 10, 5);
-        layoutDynamicInfoContainer.addView(tv);
+        subjectBlock.addView(tv); // מוסיף לבלוק הפנימי
+    }
+
+    // פונקציה שמייצרת שורת כיתה ומחזירה אותה (בלי להזריק אותה אוטומטית למיכל הראשי)
+    private View createClassRowView(String mainText, String subText) {
+        View rowView = getLayoutInflater().inflate(android.R.layout.simple_list_item_2, null);
+        TextView text1 = rowView.findViewById(android.R.id.text1);
+        TextView text2 = rowView.findViewById(android.R.id.text2);
+
+        text1.setText(mainText);
+        text1.setTextSize(15f);
+        text1.setTextColor(android.graphics.Color.parseColor("#333333"));
+
+        text2.setText(subText);
+        text2.setTextSize(13f);
+        text2.setTextColor(android.graphics.Color.parseColor("#777777"));
+
+        rowView.setPadding(30, 10, 10, 10);
+
+        android.util.TypedValue outValue = new android.util.TypedValue();
+        getTheme().resolveAttribute(android.R.layout.simple_list_item_2, outValue, true);
+        rowView.setBackgroundResource(android.R.drawable.list_selector_background);
+
+        return rowView; // מחזיר את ה-View מוכן
     }
 
     private View addClassRowView(String mainText, String subText) {

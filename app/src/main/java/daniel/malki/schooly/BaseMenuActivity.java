@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View; // הוספתי
+import android.widget.ImageView;
 import android.widget.TextView; // הוספתי
 import android.widget.Toast;
 
@@ -72,20 +73,43 @@ public abstract class BaseMenuActivity extends AppCompatActivity
     /**
      * פונקציה חדשה: מעדכנת את השם והכותרת בתפריט הצד
      */
-    private void updateHeaderInfo() {
+    /**
+     * פונקציה מעודכנת: מעדכנת את השם ואת תמונת הפרופיל בתפריט הצד
+     */
+    public void updateHeaderInfo() {
         // גישה ל-Header שנמצא בתוך ה-NavigationView
         View headerView = navigationView.getHeaderView(0);
 
         if (headerView != null) {
             TextView tvName = headerView.findViewById(R.id.tvHeaderName);
-            // TextView tvSubtitle = headerView.findViewById(R.id.tvHeaderSubtitle); // אם תרצה לשנות גם את הטקסט הקטן
+            ImageView imgHeaderAvatar = headerView.findViewById(R.id.imgHeaderAvatar); // <-- הוספנו את ה-ImageView של התפריט
 
-            // שליפת השם מהזיכרון
             SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
             String name = prefs.getString("userName", "User");
+            String userId = prefs.getString("userId", "");
 
-            // עדכון הטקסט
+            // 1. עדכון השם
             tvName.setText("Hello, " + name + " 👋");
+
+            // 2. משכיחת תמונת הפרופיל מה-FireStore והצגתה בתפריט
+            if (!userId.isEmpty() && imgHeaderAvatar != null) {
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("users").document(userId).get()
+                        .addOnSuccessListener(doc -> {
+                            if (doc.exists() && doc.getBlob("profileImageBlob") != null) {
+                                byte[] imageBytes = doc.getBlob("profileImageBlob").toBytes();
+
+                                // טעינת התמונה בעיגול לתוך ה-Header של התפריט
+                                com.bumptech.glide.Glide.with(this)
+                                        .load(imageBytes)
+                                        .circleCrop()
+                                        .into(imgHeaderAvatar);
+                            } else {
+                                // תמונת ברירת מחדל אם אין תמונה בבסיס הנתונים
+                                imgHeaderAvatar.setImageResource(android.R.drawable.ic_menu_gallery);
+                            }
+                        });
+            }
         }
     }
 
@@ -94,40 +118,65 @@ public abstract class BaseMenuActivity extends AppCompatActivity
      */
     private void updateMenuVisibility() {
         SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
-        int type = prefs.getInt("userType", 0); // 0=Student, 1=Teacher, 2=Admin
+        int type = prefs.getInt("userType", 0); // 0=Student, 1=Teacher, 2=SchoolAdmin, 3=SystemAdmin
 
         android.view.Menu menu = navigationView.getMenu();
 
         // כפתורי אדמין
         MenuItem itemAddUser = menu.findItem(R.id.menu_add_user);
+        MenuItem itemAddClass = menu.findItem(R.id.menu_add_class);
         MenuItem itemManageUsers = menu.findItem(R.id.menu_manage_users);
-        MenuItem titleAdmin = menu.findItem(R.id.title_admin); // הכותרת של הסקשן
+        MenuItem titleAdmin = menu.findItem(R.id.title_admin);
 
-        // כפתורי תלמיד/מורה
+        // כפתורי תלמיד/מורה (אקדמי)
         MenuItem itemSchedule = menu.findItem(R.id.menu_schedule);
         MenuItem itemGrades = menu.findItem(R.id.menu_grades);
         MenuItem titleAcademic = menu.findItem(R.id.title_academic);
 
-        if (type == 2) {
-            // --- מצב מנהל ---
-            // מציג אדמין
+        if (type == 3) {
+            // --- מצב מנהל מערכת על (System Admin) ---
+            // מציג ניהול בלבד, מסתיר חלק אקדמי
             if (itemAddUser != null) itemAddUser.setVisible(true);
+            if (itemAddClass != null) itemAddClass.setVisible(true);
             if (itemManageUsers != null) itemManageUsers.setVisible(true);
             if (titleAdmin != null) titleAdmin.setVisible(true);
 
-            // מסתיר לימודים (מנהל לא צריך לראות "ציונים שלי")
             if (itemSchedule != null) itemSchedule.setVisible(false);
             if (itemGrades != null) itemGrades.setVisible(false);
             if (titleAcademic != null) titleAcademic.setVisible(false);
 
-        } else {
-            // --- מצב תלמיד/מורה ---
-            // מסתיר אדמין
+        } else if (type == 2) {
+            // --- מצב מנהל בית ספר (School Admin שהוא גם מורה) ---
+            // מציג גם ניהול וגם אקדמי
+            if (itemAddUser != null) itemAddUser.setVisible(true);
+            if (itemAddClass != null) itemAddClass.setVisible(true);
+            if (itemManageUsers != null) itemManageUsers.setVisible(true);
+            if (titleAdmin != null) titleAdmin.setVisible(true);
+
+            if (itemSchedule != null) itemSchedule.setVisible(true);
+            if (itemGrades != null) itemGrades.setVisible(true);
+            if (titleAcademic != null) titleAcademic.setVisible(true);
+
+        } else if (type == 1) {
+            // --- מצב מורה רגיל ---
+            // מסתיר ניהול, מציג אקדמי
             if (itemAddUser != null) itemAddUser.setVisible(false);
+            if (itemAddClass != null) itemAddClass.setVisible(false);
             if (itemManageUsers != null) itemManageUsers.setVisible(false);
             if (titleAdmin != null) titleAdmin.setVisible(false);
 
-            // מציג לימודים
+            if (itemSchedule != null) itemSchedule.setVisible(true);
+            if (itemGrades != null) itemGrades.setVisible(true);
+            if (titleAcademic != null) titleAcademic.setVisible(true);
+
+        } else {
+            // --- מצב תלמיד ---
+            // מסתיר ניהול, מציג אקדמי
+            if (itemAddUser != null) itemAddUser.setVisible(false);
+            if (itemAddClass != null) itemAddClass.setVisible(false);
+            if (itemManageUsers != null) itemManageUsers.setVisible(false);
+            if (titleAdmin != null) titleAdmin.setVisible(false);
+
             if (itemSchedule != null) itemSchedule.setVisible(true);
             if (itemGrades != null) itemGrades.setVisible(true);
             if (titleAcademic != null) titleAcademic.setVisible(true);
@@ -152,11 +201,17 @@ public abstract class BaseMenuActivity extends AppCompatActivity
             logout();
         }
 
-        // --- כפתורים בפיתוח (Admin) ---
+        // --- כפתורים פעילים (Admin) ---
         else if (id == R.id.menu_add_user) {
-            // מונע פתיחה כפולה של אותו מסך
             if (!(this instanceof AddUserActivity)) {
                 startActivity(new Intent(this, AddUserActivity.class));
+            }
+        }
+        // הבלוק החדש שיוצר את המעבר למסך יצירת כיתה!
+        else if (id == R.id.menu_add_class) {
+            // ודא ששם ה-Activity כאן (CreateClassActivity) תואם ב-100% לשם הקובץ שיצרת!
+            if (!(this instanceof AddClassActivity)) {
+                startActivity(new Intent(this, AddClassActivity.class));
             }
         }
         else if (id == R.id.menu_manage_users) {

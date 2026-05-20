@@ -8,6 +8,9 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.material.card.MaterialCardView;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.PersistentCacheSettings;
 
 public class StudentDashboardActivity extends BaseMenuActivity {
 
@@ -17,6 +20,20 @@ public class StudentDashboardActivity extends BaseMenuActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setTitle("Home");
+
+        // הגדרת זיכרון מטמון מקומי (Cache) בפיירבייס עם הגנה מכפילויות
+        try {
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
+                    .build();
+            FirebaseFirestore.getInstance().setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // ההגדרות כבר נקבעו במסך קודם, אין צורך לעשות כלום
+            android.util.Log.d("FirebaseSetup", "Settings already initialized: " + e.getMessage());
+        }
+
+// עכשיו אפשר להמשיך להשתמש ב-db כרגיל
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         // 1. מציאת הכרטיסים לפי ה-ID
         cardProfile = findViewById(R.id.cardProfile);

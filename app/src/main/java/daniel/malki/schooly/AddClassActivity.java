@@ -57,7 +57,7 @@ public class AddClassActivity extends BaseMenuActivity {
     }
 
     private void setupTypeSpinner() {
-        String[] types = {"homeroom", "math", "english", "major"};
+        String[] types = {"homeroom", "math", "english", "PE", "major a", "major b"};
         spinnerGroupType.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, types));
     }
 
@@ -134,7 +134,7 @@ public class AddClassActivity extends BaseMenuActivity {
         Map<String, Object> groupData = new HashMap<>();
         groupData.put("displayName", name);
         groupData.put("type", type);
-        groupData.put("course_assignments", courseAssignments);
+        groupData.put("courseAssignments", courseAssignments);
 
         db.collection("classes").add(groupData).addOnSuccessListener(documentReference -> {
             Toast.makeText(this, "Group Created! 🚀", Toast.LENGTH_SHORT).show();

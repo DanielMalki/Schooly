@@ -14,10 +14,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Schooly">
         <activity
-            android:name=".AddClassActivity"
+            android:name=".ManageClassesActivity"
             android:exported="false" />
         <activity
-            android:name=".ScheduleActivity"
+            android:name=".ManageUsersActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AddClassActivity"
             android:exported="false" />
         <activity
             android:name=".AddUserActivity"

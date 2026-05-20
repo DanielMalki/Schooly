@@ -7,31 +7,48 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 import com.google.android.material.card.MaterialCardView;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.PersistentCacheSettings;
 
 public class AdminDashboardActivity extends BaseMenuActivity {
 
-    // הוספנו את ה-Card של הכיתה החדשה לרשימה
-    private MaterialCardView cardAddUser, cardAddClass, cardStudents, cardTeachers, cardSchedule;
+    // עודכן: החלפנו את cardStudents ו-cardTeachers בשמות החדשים והנכונים
+    private MaterialCardView cardAddUser, cardAddClass, cardManageUsers, cardManageClasses, cardSchedule;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setTitle("Admin Panel");
 
-        // חיבור ל-XML המעודכן
+        // הגדרת זיכרון מטמון מקומי (Cache) בפיירבייס עם הגנה מכפילויות
+        try {
+            FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                    .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
+                    .build();
+            FirebaseFirestore.getInstance().setFirestoreSettings(settings);
+        } catch (IllegalStateException e) {
+            // ההגדרות כבר נקבעו במסך קודם, אין צורך לעשות כלום
+            android.util.Log.d("FirebaseSetup", "Settings already initialized: " + e.getMessage());
+        }
+
+        // עכשיו אפשר להמשיך להשתמש ב-db כרגיל
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // חיבור ל-XML המעודכן עם ה-IDs החדשים
         cardAddUser = findViewById(R.id.cardAddUser);
-        cardAddClass = findViewById(R.id.cardAddClass); // הקישור החדש
-        cardStudents = findViewById(R.id.cardStudents);
-        cardTeachers = findViewById(R.id.cardTeachers);
+        cardAddClass = findViewById(R.id.cardAddClass);
+        cardManageUsers = findViewById(R.id.cardManageUsers);     // עודכן מ-cardStudents
+        cardManageClasses = findViewById(R.id.cardManageClasses); // עודכן מ-cardTeachers
         cardSchedule = findViewById(R.id.cardSchedule);
 
         // הגדרת הלחיצות והאינטנטים האמיתיים!
         setupCard(cardAddUser, AddUserActivity.class);    // מקשר למסך הוספת משתמש
         setupCard(cardAddClass, AddClassActivity.class);  // מקשר למסך הוספת כיתה/קבוצה
+        setupCard(cardManageUsers, ManageUsersActivity.class); // עודכן: מקשר ישירות למסך ניהול המשתמשים החדש! 🔥
+        setupCard(cardManageClasses, ManageClassesActivity.class);
 
         // שאר המסכים עדיין בפיתוח, נשאיר אותם כרגע כפי שהיו
-        setupCard(cardStudents, null);
-        setupCard(cardTeachers, null);
         setupCard(cardSchedule, null);
     }
 
