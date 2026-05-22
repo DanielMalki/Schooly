@@ -31,7 +31,8 @@ public class LoginActivity extends AppCompatActivity {
         if (prefs.getBoolean("isLoggedIn", false)) {
             int type = prefs.getInt("userType", 0);
             Intent intent;
-            if (type == 2) {
+            // תיקון: גם School Admin (2) וגם Schooly Admin (3) צריכים להגיע לדאשבורד הניהול
+            if (type == 2 || type == 3) {
                 intent = new Intent(this, AdminDashboardActivity.class);
             } else {
                 intent = new Intent(this, StudentDashboardActivity.class);
@@ -56,7 +57,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin.setOnClickListener(v -> validateAndLogin());
 
         tvForgot.setOnClickListener(v ->
-                Toast.makeText(this, "Please contact the system administrator", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please contact the Schooly Admin", Toast.LENGTH_SHORT).show()
         );
     }
 
@@ -131,8 +132,8 @@ public class LoginActivity extends AppCompatActivity {
 
         // 4. ניתוב לפי סוג משתמש
         Intent intent;
-        if (type == 2) {
-            // מנהל מערכת
+        // תיקון: ניתוב מותאם גם ל-School Admin וגם ל-Schooly Admin
+        if (type == 2 || type == 3) {
             intent = new Intent(LoginActivity.this, AdminDashboardActivity.class);
         } else {
             // תלמיד (0) או מורה (1)
@@ -146,9 +147,6 @@ public class LoginActivity extends AppCompatActivity {
 
     /* ---------------- ID VALIDATION ---------------- */
 
-    /**
-     * Israeli ID validation (length + check digit)
-     */
     private boolean isValidIsraeliId(String id) {
         if (id.length() != 9 || !id.matches("\\d+"))
             return false;

@@ -17,17 +17,43 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Add New User"
+            android:text="User Profile &amp; Settings"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="#1A237E"
-            android:layout_marginBottom="20dp"
+            android:layout_marginBottom="15dp"
             android:gravity="center"/>
+
+        <RelativeLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginBottom="20dp">
+
+            <ImageView
+                android:id="@+id/imgDetailAvatar"
+                android:layout_width="110dp"
+                android:layout_height="110dp"
+                android:src="@android:drawable/sym_def_app_icon"
+                android:background="@android:color/transparent" />
+
+            <ImageButton
+                android:id="@+id/btnEditAvatar"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignEnd="@id/imgDetailAvatar"
+                android:layout_alignBottom="@id/imgDetailAvatar"
+                android:backgroundTint="#1A237E"
+                android:src="@android:drawable/ic_menu_camera"
+                app:tint="@android:color/white"
+                android:background="@android:drawable/editbox_dropdown_light_frame"
+                android:visibility="gone" />
+        </RelativeLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="1. Select User Role:"
+            android:text="1. User Role (Cannot be changed):"
             android:textStyle="bold"
             android:layout_marginBottom="5dp"
             android:textColor="#333333"/>
@@ -37,16 +63,15 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_marginBottom="20dp"
-            android:background="#EEEEEE"/>
-
-        <TextView
-            android:id="@+id/tvSchoolTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="School Assignment:"
-            android:textStyle="bold"
-            android:layout_marginBottom="5dp"
-            android:textColor="#333333"/>
+            android:background="#EEEEEE"
+            android:enabled="false"/> <TextView
+        android:id="@+id/tvSchoolTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="School Assignment:"
+        android:textStyle="bold"
+        android:layout_marginBottom="5dp"
+        android:textColor="#333333"/>
 
         <EditText
             android:id="@+id/etSchoolLocked"
@@ -83,8 +108,7 @@
                 android:src="@android:drawable/ic_input_add"
                 android:backgroundTint="#1A237E"
                 app:tint="@android:color/white"
-                android:visibility="gone"
-                android:contentDescription="Quick add school" />
+                android:visibility="gone"/>
         </LinearLayout>
 
         <View
@@ -109,7 +133,8 @@
             android:hint="ID Number (T.Z) *"
             android:inputType="number"
             android:layout_marginBottom="15dp"
-            android:background="#EEEEEE"
+            android:background="#E0E0E0"
+            android:enabled="false"
             android:padding="10dp"/>
 
         <LinearLayout
@@ -161,16 +186,6 @@
             android:background="#EEEEEE"
             android:padding="10dp"/>
 
-        <EditText
-            android:id="@+id/etNewPassword"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:hint="Password *"
-            android:inputType="textPassword"
-            android:layout_marginBottom="15dp"
-            android:background="#EEEEEE"
-            android:padding="10dp"/>
-
         <LinearLayout
             android:id="@+id/layoutStudentFields"
             android:layout_width="match_parent"
@@ -181,45 +196,16 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="3. Assign Student to Learning Groups:"
+                android:text="3. Learning Groups Assignment:"
                 android:textStyle="bold"
-                android:textColor="#FF5722"
-                android:layout_marginBottom="10dp"/>
-
-            <Spinner
-                android:id="@+id/spinnerHomeroom"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
                 android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
+                android:textColor="#333333"/>
 
-            <Spinner
-                android:id="@+id/spinnerMathGroup"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
-
-            <Spinner
-                android:id="@+id/spinnerEnglishGroup"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
-
-            <Spinner
-                android:id="@+id/spinnerMajor1Group"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
-
-            <Spinner
-                android:id="@+id/spinnerMajor2Group"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="15dp"
-                android:background="#FFF3E0"/>
+            <Spinner android:id="@+id/spinnerHomeroom" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
+            <Spinner android:id="@+id/spinnerMathGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
+            <Spinner android:id="@+id/spinnerEnglishGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
+            <Spinner android:id="@+id/spinnerMajor1Group" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
+            <Spinner android:id="@+id/spinnerMajor2Group" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="20dp" android:background="#EEEEEE"/>
         </LinearLayout>
 
         <LinearLayout
@@ -227,16 +213,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingTop="10dp"
             android:visibility="gone">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="3. Teacher / School Admin Subjects Setup:"
+                android:text="3. Professional Expertise:"
                 android:textStyle="bold"
-                android:textColor="#2E8B57"
-                android:layout_marginBottom="10dp"/>
+                android:layout_marginBottom="10dp"
+                android:textColor="#333333"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -248,15 +233,14 @@
                 <TextView
                     android:id="@+id/tvSelectSubjects"
                     android:layout_width="0dp"
-                    android:layout_height="50dp"
                     android:layout_weight="1"
+                    android:layout_height="50dp"
                     android:text="Select Teachable Subjects *"
-                    android:textColor="#666666"
                     android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
-                    android:background="@drawable/rounded_edittext_bg"
-                    android:clickable="true"
-                    android:focusable="true"/>
+                    android:background="#EEEEEE"
+                    android:padding="10dp"
+                    android:textColor="#666666"
+                    android:textStyle="bold"/>
 
                 <ImageButton
                     android:id="@+id/btnQuickAddSubject"
@@ -265,9 +249,7 @@
                     android:layout_marginStart="8dp"
                     android:src="@android:drawable/ic_input_add"
                     android:backgroundTint="#1A237E"
-                    app:tint="@android:color/white"
-                    android:background="@drawable/rounded_edittext_bg"
-                    android:contentDescription="Quick add subject" />
+                    app:tint="@android:color/white"/>
             </LinearLayout>
 
             <LinearLayout
@@ -275,18 +257,26 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginBottom="15dp"
-                android:paddingStart="10dp" />
-
+                android:paddingStart="10dp"
+                android:layout_marginBottom="20dp"/>
         </LinearLayout>
 
         <Button
-            android:id="@+id/btnSaveUser"
+            android:id="@+id/btnChangePasswordPlaceholder"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:text="Save User"
-            android:textSize="18sp"
-            android:backgroundTint="#1A237E"
+            android:layout_height="50dp"
+            android:layout_marginBottom="10dp"
+            android:backgroundTint="#9E9E9E"
+            android:text="Change Password (Disabled)"
+            android:textColor="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btnSaveUserDetails"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:backgroundTint="#4CAF50"
+            android:text="Save Changes"
+            android:visibility="gone"
             android:textColor="@android:color/white"/>
 
     </LinearLayout>

@@ -35,11 +35,15 @@ public class AddUserActivity extends BaseMenuActivity {
     // רכיבי בית ספר הדינמיים
     private EditText etSchoolLocked;
     private Spinner spinnerSchoolSelect;
+    private ImageButton btnQuickAddSchool;
+    private TextView tvSchoolTitle;
+    private View viewSchoolDivider;
+
     private ArrayList<String> schoolNames = new ArrayList<>();
     private ArrayList<String> schoolIds = new ArrayList<>();
-    private DocumentReference selectedSchool; // הרפרנס הסופי שיישמר למשתמש החדש
+    private DocumentReference selectedSchool;
 
-    // נתונים של המנהל שמחובר כרגע (נשלפים דינמית מ-SharedPreferences)
+    // נתונים של המנהל שמחובר כרגע
     private int currentAdminType;
     private String currentAdminId;
 
@@ -69,7 +73,7 @@ public class AddUserActivity extends BaseMenuActivity {
     protected int getLayoutResourceId() { return R.layout.activity_add_user; }
 
     @Override
-    protected int[] getAllowedUserTypes() { return new int[]{2, 3}; } // מורשה גם למנהל בית ספר (2) וגם למנהל מערכת (3)
+    protected int[] getAllowedUserTypes() { return new int[]{2, 3}; }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,9 +90,12 @@ public class AddUserActivity extends BaseMenuActivity {
         spinnerRole = findViewById(R.id.spinnerRole);
         btnSaveUser = findViewById(R.id.btnSaveUser);
 
-        // אתחול רכיבי בית ספר החדשים
+        // אתחול רכיבי בית ספר
         etSchoolLocked = findViewById(R.id.etSchoolLocked);
         spinnerSchoolSelect = findViewById(R.id.spinnerSchoolSelect);
+        btnQuickAddSchool = findViewById(R.id.btnQuickAddSchool);
+        tvSchoolTitle = findViewById(R.id.tvSchoolTitle);
+        viewSchoolDivider = findViewById(R.id.viewSchoolDivider);
 
         // אתחול שדות תלמיד
         layoutStudentFields = findViewById(R.id.layoutStudentFields);
@@ -107,14 +114,18 @@ public class AddUserActivity extends BaseMenuActivity {
         tvSelectSubjects.setOnClickListener(v -> showSubjectsMultiChoiceDialog());
         btnQuickAddSubject.setOnClickListener(v -> showQuickAddSubjectDialog());
 
+        if (btnQuickAddSchool != null) {
+            btnQuickAddSchool.setOnClickListener(v -> showQuickAddSchoolDialog());
+        }
+
         setupRoleSpinner();
 
         // 1. קריאת זהות המנהל המחובר מתוך ה-Session המקומי
         SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
-        currentAdminType = prefs.getInt("userType", 2); // ברירת מחדל 2 אם לא נמצא
+        currentAdminType = prefs.getInt("userType", 2);
         currentAdminId = prefs.getString("userId", "");
 
-        // 2. קביעת נראות שדות בית הספר (נעול או ספינר בחירה)
+        // 2. קביעת נראות שדות בית הספר
         checkAdminSchoolStatus();
 
         // 3. טעינת נתונים משלימים מה-DB
@@ -125,25 +136,25 @@ public class AddUserActivity extends BaseMenuActivity {
     }
 
     /**
-     * קובע את נראות שדות בית הספר על פי דרגת המנהל המחובר ללא תלות בקוד קשיח
+     * קובע את נראות שדות בית הספר על פי דרגת המנהל המחובר
      */
     private void checkAdminSchoolStatus() {
+        if (spinnerRole.getSelectedItemPosition() == 3) {
+            setSchoolLayoutVisibility(View.GONE, View.GONE, View.GONE);
+            return;
+        }
+
         if (currentAdminType == 2) {
-            // מנהל בית ספר (רמה 2) - השדה נעול לצפייה בלבד
-            etSchoolLocked.setVisibility(View.VISIBLE);
-            spinnerSchoolSelect.setVisibility(View.GONE);
+            setSchoolLayoutVisibility(View.VISIBLE, View.GONE, View.GONE);
 
             if (!currentAdminId.isEmpty()) {
-                // הבאת ה-school ישירות ממסמך המנהל הנוכחי
                 db.collection("users").document(currentAdminId).get().addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         selectedSchool = documentSnapshot.getDocumentReference("school");
                         if (selectedSchool != null) {
-                            // שליפת השם הויזואלי של בית הספר שלו
                             selectedSchool.get().addOnSuccessListener(schoolDoc -> {
                                 if (schoolDoc.exists()) {
-                                    String schoolName = schoolDoc.getString("name");
-                                    if (schoolName == null) schoolName = schoolDoc.getString("displayName");
+                                    String schoolName = schoolDoc.getString("displayName");
                                     etSchoolLocked.setText(schoolName != null ? schoolName : selectedSchool.getId());
                                 }
                             });
@@ -152,23 +163,32 @@ public class AddUserActivity extends BaseMenuActivity {
                 });
             }
         } else if (currentAdminType == 3) {
-            // מנהל מערכת (רמה 3) - פותח ספינר אינטראקטיבי לבחירת כל מוסד במערכת
-            etSchoolLocked.setVisibility(View.GONE);
-            spinnerSchoolSelect.setVisibility(View.VISIBLE);
-            loadAllSchoolsForSystemAdmin();
+            setSchoolLayoutVisibility(View.GONE, View.VISIBLE, View.VISIBLE);
+            loadAllSchoolsForSchoolyAdmin();
         }
     }
 
+    private void setSchoolLayoutVisibility(int lockedVis, int selectVis, int quickAddVis) {
+        if (etSchoolLocked != null) etSchoolLocked.setVisibility(lockedVis);
+        if (spinnerSchoolSelect != null) spinnerSchoolSelect.setVisibility(selectVis);
+        if (btnQuickAddSchool != null) btnQuickAddSchool.setVisibility(quickAddVis);
+
+        int generalVisibility = (lockedVis == View.GONE && selectVis == View.GONE) ? View.GONE : View.VISIBLE;
+        if (tvSchoolTitle != null) tvSchoolTitle.setVisibility(generalVisibility);
+        if (viewSchoolDivider != null) viewSchoolDivider.setVisibility(generalVisibility);
+    }
+
     /**
-     * טעינת כל המוסדות הקיימים באפליקציה עבור מנהל המערכת הראשי
+     * טעינת כל המוסדות הקיימים באפליקציה (שליפת displayName)
      */
-    private void loadAllSchoolsForSystemAdmin() {
+    private void loadAllSchoolsForSchoolyAdmin() {
         db.collection("schools").get().addOnSuccessListener(queryDocumentSnapshots -> {
             schoolNames.clear();
             schoolIds.clear();
             for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                 schoolIds.add(doc.getId());
-                String name = doc.contains("name") ? doc.getString("name") : doc.getId();
+                String name = doc.getString("displayName");
+                if (name == null) name = doc.getId();
                 schoolNames.add(name);
             }
             ArrayAdapter<String> schoolAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, schoolNames);
@@ -186,7 +206,7 @@ public class AddUserActivity extends BaseMenuActivity {
     }
 
     private void setupRoleSpinner() {
-        String[] roles = {"Student", "Teacher", "School Admin"};
+        String[] roles = {"Student", "Teacher", "School Admin", "Schooly Admin"};
         spinnerRole.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, roles));
         spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -194,15 +214,58 @@ public class AddUserActivity extends BaseMenuActivity {
                 if (position == 0) { // תלמיד
                     layoutStudentFields.setVisibility(View.VISIBLE);
                     layoutTeacherFields.setVisibility(View.GONE);
-                } else { // מורה או אדמין בית ספר
+                    checkAdminSchoolStatus();
+                } else if (position == 1 || position == 2) { // מורה או אדמין בית ספר
                     layoutStudentFields.setVisibility(View.GONE);
                     layoutTeacherFields.setVisibility(View.VISIBLE);
+                    checkAdminSchoolStatus();
                     layoutTeacherFields.requestLayout();
+                } else if (position == 3) { // מנהל סקולי על
+                    layoutStudentFields.setVisibility(View.GONE);
+                    layoutTeacherFields.setVisibility(View.GONE);
+                    setSchoolLayoutVisibility(View.GONE, View.GONE, View.GONE);
                 }
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
+    }
+
+    /**
+     * דיאלוג מהיר להוספת בית ספר חדש עם קוד רנדומלי
+     */
+    private void showQuickAddSchoolDialog() {
+        final EditText etInput = new EditText(this);
+        etInput.setHint("School Name (e.g., Ironi Alef)");
+        etInput.setPadding(40, 32, 40, 32);
+        new AlertDialog.Builder(this)
+                .setTitle("Quick Add New School")
+                .setMessage("Enter the name of the new school:")
+                .setView(etInput)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String schoolName = etInput.getText().toString().trim();
+                    if (!schoolName.isEmpty()) {
+                        saveSchoolToFirestoreQuickly(schoolName);
+                    } else {
+                        Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void saveSchoolToFirestoreQuickly(String schoolName) {
+        Map<String, Object> schoolData = new HashMap<>();
+        schoolData.put("displayName", schoolName);
+
+        // .add() מייצר אוטומטית מפתח רנדומלי ייחודי ב-Firestore
+        db.collection("schools")
+                .add(schoolData)
+                .addOnSuccessListener(documentReference -> {
+                    Toast.makeText(this, schoolName + " School Added! 🏫", Toast.LENGTH_SHORT).show();
+                    loadAllSchoolsForSchoolyAdmin();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Failed to add school: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void loadSubjectsFromFirestore() {
@@ -265,7 +328,6 @@ public class AddUserActivity extends BaseMenuActivity {
     }
 
     private void loadClassesFromFirestore() {
-        // היררכיית אבטחה: מנהל מוסד (2) רואה ומקבל רק קבוצות לימוד של המוסד שלו!
         Query classesQuery;
         if (currentAdminType == 2 && selectedSchool != null) {
             classesQuery = db.collection("classes").whereEqualTo("school", selectedSchool);
@@ -373,7 +435,7 @@ public class AddUserActivity extends BaseMenuActivity {
             return;
         }
 
-        if (selectedSchool == null) {
+        if (type != 3 && selectedSchool == null) {
             Toast.makeText(this, "Error: No school assigned to this user!", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -398,7 +460,7 @@ public class AddUserActivity extends BaseMenuActivity {
             if (spinnerMajor2Group.getSelectedItemPosition() > 0) {
                 studentClassRefs.add(db.collection("classes").document(majorIds.get(spinnerMajor2Group.getSelectedItemPosition())));
             }
-        } else { // מורה או אדמין בית ספר
+        } else if (type == 1 || type == 2) {
             if (chosenSubjectIds.isEmpty()) {
                 Toast.makeText(this, "Please select at least one teachable subject!", Toast.LENGTH_LONG).show();
                 return;
@@ -413,7 +475,7 @@ public class AddUserActivity extends BaseMenuActivity {
                 etTz.setError("User already exists!");
                 new AlertDialog.Builder(this)
                         .setTitle("שגיאה ביצירת משתמש 🚫")
-                        .setMessage("תעודת הזהות שהזנת (" + tz + ") כבר קיימת במערכת.")
+                        .setMessage("תעודת הזהות שהזנת (" + tz + ") כבר קייтая במערכת.")
                         .setPositiveButton("הבנתי", null)
                         .show();
             } else {
@@ -427,12 +489,13 @@ public class AddUserActivity extends BaseMenuActivity {
                 userMap.put("firstName", firstName);
                 userMap.put("lastName", lastName);
 
-                // שיוך הרפרנס הנבחר/האוטומטי למסמך המשתמש החדש
-                userMap.put("school", selectedSchool);
+                if (type != 3) {
+                    userMap.put("school", selectedSchool);
+                }
 
                 if (type == 0) {
                     userMap.put("classes", studentClassRefs);
-                } else {
+                } else if (type == 1 || type == 2) {
                     userMap.put("teachableSubjects", teacherSubjectRefs);
                 }
 

@@ -29,6 +29,11 @@
                 android:id="@+id/menu_manage_users"
                 android:title="Manage Users"
                 android:icon="@android:drawable/ic_menu_edit"/>
+
+            <item
+                android:id="@+id/menu_manage_classes"
+                android:title="Manage Classes &amp; Groups"
+                android:icon="@android:drawable/ic_menu_agenda"/>
         </menu>
     </item>
 

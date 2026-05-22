@@ -34,11 +34,10 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ClassViewHol
 
         holder.tvClassName.setText(schoolClass.getDisplayName());
 
-        // הצגת סוג הכיתה/קבוצה באותיות קטנות מתחת לשם
         String typeText = schoolClass.getType() != null ? schoolClass.getType().toUpperCase() : "GENERAL";
         holder.tvTeacherName.setText("Type: " + typeText);
 
-        // שינוי צבע הריבוע בצד לפי סוג הקבוצה כדי שיהיה מעוצב ויפה
+        // שינוי צבע הריבוע בצד לפי סוג הקבוצה (כולל ספורט ודיפולט)
         GradientDrawable bgShape = new GradientDrawable();
         bgShape.setCornerRadius(15); // עיגול פינות קל לאייקון
 
@@ -53,12 +52,17 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ClassViewHol
                 case "homeroom":
                     bgShape.setColor(Color.parseColor("#9C27B0")); // סגול לכיתת אם
                     break;
+                case "pe": // 🏃‍♂️ הוספנו תמיכה בחינוך גופני!
+                    bgShape.setColor(Color.parseColor("#FF5722")); // כתום-אדום דינמי לספורט
+                    break;
                 default:
-                    bgShape.setColor(Color.parseColor("#78909C")); // אפור לכל השאר
+                    // 🛡️ המצב הדיפולטיבי - אם סוג הכיתה לא תואם לאף אחד מהנ"ל
+                    bgShape.setColor(Color.parseColor("#78909C")); // אפור-כחלחל ניטרלי
                     break;
             }
         } else {
-            bgShape.setColor(Color.parseColor("#78909C"));
+            // 🛡️ מצב דיפולטיבי נוסף - למקרה ששדה ה-type ב-Firestore בכלל ריק (null)
+            bgShape.setColor(Color.parseColor("#78909C")); // אפור-כחלחל ניטרלי
         }
         holder.viewClassIcon.setBackground(bgShape);
     }
@@ -74,7 +78,6 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ClassViewHol
         notifyDataSetChanged();
     }
 
-    // מנגנון חיפוש כיתות לפי ה-displayName
     public void filter(String query) {
         List<SchoolClass> filteredList = new ArrayList<>();
         for (SchoolClass sc : classListFull) {
@@ -82,7 +85,8 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ClassViewHol
                 filteredList.add(sc);
             }
         }
-        classListFiltered = filteredList;
+        // ✅ תיקון: השמה ישירה למשתנה המחלקה הנכון שמציג את הנתונים
+        this.classListFiltered = filteredList;
         notifyDataSetChanged();
     }
 

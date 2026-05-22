@@ -1,5 +1,7 @@
 package daniel.malki.schooly;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -10,9 +12,15 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +29,7 @@ public class ManageUsersActivity extends BaseMenuActivity {
 
     private EditText etSearch;
     private Spinner spinnerFilterRole;
+    private Spinner spinnerSchoolSelectManage;
     private RecyclerView rvUsers;
     private TextView tvNoResults;
 
@@ -28,39 +37,64 @@ public class ManageUsersActivity extends BaseMenuActivity {
     private List<User> userList;
     private FirebaseFirestore db;
 
-    // משתנים לשמירת מצב הסינון הנוכחי בזמן אמת
+    private int currentAdminType;
+    private String currentAdminId;
+
+    private ArrayList<String> schoolNames = new ArrayList<>();
+    private ArrayList<String> schoolIds = new ArrayList<>();
+    private DocumentReference selectedSchoolRef;
+
     private String currentQuery = "";
-    private int currentRoleFilter = 0; // 0=הכל, 1=תלמידים, 2=מורים, 3=אדמינים
+    private int currentRoleFilter = 0; // 0=הכל, 1=תלמידים, 2=מורים, 3=School Admins, 4=Schooly Admins
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setTitle("Manage Users"); // קביעת כותרת ל-Toolbar
+        setTitle("Manage Users");
 
         db = FirebaseFirestore.getInstance();
 
-        // 1. חיבור רכיבי העיצוב מה-XML
         etSearch = findViewById(R.id.etSearch);
         spinnerFilterRole = findViewById(R.id.spinnerFilterRole);
+        spinnerSchoolSelectManage = findViewById(R.id.spinnerSchoolSelectManage);
         rvUsers = findViewById(R.id.rvUsers);
         tvNoResults = findViewById(R.id.tvNoResults);
 
-        // 2. הגדרת ה-RecyclerView
         userList = new ArrayList<>();
         adapter = new UserAdapter(userList);
         rvUsers.setLayoutManager(new LinearLayoutManager(this));
         rvUsers.setAdapter(adapter);
 
-        // 3. הגדרת הספינר (אפשרויות הסינון)
-        String[] roles = {"All Roles", "Students", "Teachers", "Admins"};
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, roles);
+        // קריאת נתוני המנהל המחובר מה-Session
+        SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
+        currentAdminType = prefs.getInt("userType", 2);
+        currentAdminId = prefs.getString("userId", "");
+
+        // 🛠️ הגדרת ספינר התפקידים דינמית לפי סוג המנהל המחובר
+        ArrayList<String> roleOptions = new ArrayList<>();
+        roleOptions.add("All Roles");      // 0
+        roleOptions.add("Students");       // 1
+        roleOptions.add("Teachers");       // 2
+        roleOptions.add("School Admins");  // 3
+
+        // רק אם המשתמש המחובר הוא Schooly Admin, נאפשר לו לראות ולסנן מנהלי סקולי אחרים
+        if (currentAdminType == 3) {
+            roleOptions.add("Schooly Admins"); // 4
+        }
+
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, roleOptions);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFilterRole.setAdapter(spinnerAdapter);
 
-        // 4. טעינת הנתונים מפיירבייס
-        loadUsersFromFirestore();
+        // קביעת הלוגיקה בהתאם לסוג המנהל
+        if (currentAdminType == 3) {
+            spinnerSchoolSelectManage.setVisibility(View.VISIBLE);
+            loadAllSchoolsForSchoolyAdmin();
+        } else {
+            spinnerSchoolSelectManage.setVisibility(View.GONE);
+            loadUsersForSchoolAdmin();
+        }
 
-        // 5. האזנה לשינויים בתיבת החיפוש (TextWatcher)
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -75,7 +109,6 @@ public class ManageUsersActivity extends BaseMenuActivity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // 6. האזנה לשינויים בספינר הסינון
         spinnerFilterRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -88,62 +121,108 @@ public class ManageUsersActivity extends BaseMenuActivity {
         });
     }
 
-    /**
-     * משיכת כל המשתמשים מ-Firestore שהם חלק מבית הספר של המנהל
-     */
-    private void loadUsersFromFirestore() {
-        // נניח שזה ה-ID של המנהל המחובר כרגע (למשל ה-ID של רינת מהתמונה: "025484379")
-        // בהמשך נדאג שהמשתנה הזה יגיע דינמית מהמסך הקודם
-        String currentAdminId = "025484379";
+    // 📋 בתוך ManageUsersActivity.java - שנה את זה ל-package-private או public
+    final ActivityResultLauncher<Intent> editUserLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    if (currentAdminType == 3) {
+                        fetchUsers();
+                    } else {
+                        loadUsersForSchoolAdmin();
+                    }
+                }
+            }
+    );
 
-        // שליפת מסמך המנהל ישירות מתוך קולקשן users
+    private void loadUsersForSchoolAdmin() {
+        if (currentAdminId.isEmpty()) return;
+
         db.collection("users").document(currentAdminId).get()
                 .addOnSuccessListener(adminDoc -> {
                     if (adminDoc.exists()) {
-                        // שליפת הרפרנס של בית הספר של המנהל
-                        com.google.firebase.firestore.DocumentReference adminSchoolRef = adminDoc.getDocumentReference("schoolRef");
-
-                        if (adminSchoolRef != null) {
-                            // שאילתה מסוננת שמביאה רק מסמכי משתמשים ששדה ה-schoolRef שלהם שווה לבית הספר של המנהל
-                            db.collection("users")
-                                    .whereEqualTo("schoolRef", adminSchoolRef)
-                                    .get()
-                                    .addOnSuccessListener(queryDocumentSnapshots -> {
-                                        userList.clear();
-                                        for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                                            User user = document.toObject(User.class);
-                                            user.setUserId(document.getId()); // מזהה המסמך הוא ה-ID
-                                            userList.add(user);
-                                        }
-                                        adapter.updateList(userList);
-                                        applyFilterAndCheckEmpty();
-                                    })
-                                    .addOnFailureListener(e -> {
-                                        Toast.makeText(this, "Error loading users: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                    });
+                        selectedSchoolRef = adminDoc.getDocumentReference("school");
+                        if (selectedSchoolRef != null) {
+                            fetchUsers();
+                        } else {
+                            Toast.makeText(this, "No school reference assigned to you!", Toast.LENGTH_SHORT).show();
                         }
                     }
                 })
+                .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void loadAllSchoolsForSchoolyAdmin() {
+        db.collection("schools").get().addOnSuccessListener(queryDocumentSnapshots -> {
+            schoolNames.clear();
+            schoolIds.clear();
+
+            schoolNames.add("🌍 All Schools");
+            schoolIds.add("all");
+
+            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                schoolIds.add(doc.getId());
+                String name = doc.getString("displayName");
+                if (name == null) name = doc.getId();
+                schoolNames.add(name);
+            }
+
+            ArrayAdapter<String> schoolAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, schoolNames);
+            spinnerSchoolSelectManage.setAdapter(schoolAdapter);
+
+            spinnerSchoolSelectManage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (position == 0) {
+                        selectedSchoolRef = null;
+                    } else {
+                        selectedSchoolRef = db.collection("schools").document(schoolIds.get(position));
+                    }
+                    fetchUsers();
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load schools", Toast.LENGTH_SHORT).show());
+    }
+
+    private void fetchUsers() {
+        Query usersQuery;
+
+        if (selectedSchoolRef != null) {
+            usersQuery = db.collection("users").whereEqualTo("school", selectedSchoolRef);
+        } else {
+            usersQuery = db.collection("users");
+        }
+
+        usersQuery.get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    userList.clear();
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        User user = document.toObject(User.class);
+                        user.setUserId(document.getId());
+                        userList.add(user);
+                    }
+                    adapter.updateList(userList);
+                    applyFilterAndCheckEmpty();
+                })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Error identifying admin school: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Error loading users: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
-    /**
-     * הפעלת הסינון המשולב ובדיקה האם הרשימה ריקה כדי להציג הודעת שגיאה
-     */
     private void applyFilterAndCheckEmpty() {
-        adapter.filter(currentQuery, currentRoleFilter);
-
-        // בדיקה קטנה כדי להציג "No users found" אם הסינון מחק את כל הרשימה מהמסך
-        if (adapter.getItemCount() == 0) {
-            tvNoResults.setVisibility(View.VISIBLE);
-        } else {
-            tvNoResults.setVisibility(View.GONE);
+        if (adapter != null) {
+            adapter.filter(currentQuery, currentRoleFilter);
+            if (adapter.getItemCount() == 0) {
+                tvNoResults.setVisibility(View.VISIBLE);
+            } else {
+                tvNoResults.setVisibility(View.GONE);
+            }
         }
     }
 
-    // מימוש מתודות החובה של BaseMenuActivity כדי שהתפריט יעבוד פיקס!
     @Override
     protected int getLayoutResourceId() {
         return R.layout.activity_manage_users;
@@ -151,6 +230,6 @@ public class ManageUsersActivity extends BaseMenuActivity {
 
     @Override
     protected int[] getAllowedUserTypes() {
-        return new int[]{2}; // רק מנהל מערכת (type = 2) רשאי להיכנס למסך זה!
+        return new int[]{2, 3};
     }
 }

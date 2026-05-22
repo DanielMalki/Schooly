@@ -35,8 +35,11 @@ public class AddClassActivity extends BaseMenuActivity {
     @Override
     protected int getLayoutResourceId() { return R.layout.activity_add_class; }
 
+    // ✅ המתודה הושארה כאן פעם אחת בלבד ומאפשרת לשני סוגי המנהלים גישה
     @Override
-    protected int[] getAllowedUserTypes() { return new int[]{2}; } // אדמין
+    protected int[] getAllowedUserTypes() {
+        return new int[]{2, 3};
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +60,8 @@ public class AddClassActivity extends BaseMenuActivity {
     }
 
     private void setupTypeSpinner() {
-        String[] types = {"homeroom", "math", "english", "PE", "major a", "major b"};
+        // אותיות קטנות לטובת אחידות מושלמת מול ה-Adapter ומסד הנתונים
+        String[] types = {"homeroom", "math", "english", "pe", "major a", "major b"};
         spinnerGroupType.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, types));
     }
 
@@ -83,7 +87,6 @@ public class AddClassActivity extends BaseMenuActivity {
     }
 
     private void addNewPairRow() {
-        // פונקציה שמנפחת (Inflate) שורה חדשה לתוך הקונטיינר
         View pairView = LayoutInflater.from(this).inflate(R.layout.item_subject_teacher_pair, null);
 
         Spinner subSpin = pairView.findViewById(R.id.spinnerSubjectInPair);
@@ -107,7 +110,6 @@ public class AddClassActivity extends BaseMenuActivity {
             return;
         }
 
-        // בניית מערך המפות (Array of Maps)
         List<Map<String, Object>> courseAssignments = new ArrayList<>();
 
         for (int i = 0; i < layoutPairsContainer.getChildCount(); i++) {
