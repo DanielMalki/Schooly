@@ -73,20 +73,25 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
                     holder.imgUserAvatar.setImageResource(android.R.drawable.sym_def_app_icon);
                 });
 
-        // 🌟 הפיצ'ר החדש: מאזין ללחיצה על כל השורה
+        // מאזין ללחיצה על כל השורה
         holder.itemView.setOnClickListener(v -> {
             android.content.Intent intent = new android.content.Intent(holder.itemView.getContext(), UserDetailActivity.class);
             intent.putExtra("selectedUserId", user.getUserId()); // העברת ה-ID למסך הבא
 
-            // 🔥 התיקון: בודקים אם ה-Context הוא אכן האקטיביטי שלנו, ומפעילים דרכה את הלאנצ'ר
             if (holder.itemView.getContext() instanceof ManageUsersActivity) {
                 ManageUsersActivity activity = (ManageUsersActivity) holder.itemView.getContext();
                 activity.editUserLauncher.launch(intent);
             } else {
-                // גיבוי ליתר ביטחון, אם ה-Context איכשהו שונה
                 holder.itemView.getContext().startActivity(intent);
             }
         });
+
+        // ⚠️ הצגת אייקון אזהרה רק לתלמידים חריגים
+        if (user.isExceptionStudent()) {
+            holder.imgExceptionWarning.setVisibility(View.VISIBLE);
+        } else {
+            holder.imgExceptionWarning.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -112,13 +117,16 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             if (roleFilter == 0) {
                 matchesRole = true; // All Roles
             } else if (roleFilter == 1 && user.getType() == 0) {
-                matchesRole = true; // Students (type 0)
+                matchesRole = true; // Students
             } else if (roleFilter == 2 && user.getType() == 1) {
-                matchesRole = true; // Teachers (type 1)
+                matchesRole = true; // Teachers
             } else if (roleFilter == 3 && user.getType() == 2) {
-                matchesRole = true; // School Admins (type 2)
+                matchesRole = true; // School Admins
             } else if (roleFilter == 4 && user.getType() == 3) {
-                matchesRole = true; // Schooly Admins (type 3)
+                matchesRole = true; // Schooly Admins
+            } else if (roleFilter == 5 && user.isExceptionStudent()) {
+                // ✨ הוספנו את המצב החדש: סינון תלמידים חריגים בלבד!
+                matchesRole = true;
             }
 
             if (matchesQuery && matchesRole) {
@@ -126,18 +134,20 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             }
         }
 
-        // ✅ תיקון: הצבה למשתנה הנכון שמוגדר בראש המחלקה
         this.userListFiltered = filteredList;
         notifyDataSetChanged();
     }
 
     public static class UserViewHolder extends RecyclerView.ViewHolder {
         ImageView imgUserAvatar;
+        ImageView imgExceptionWarning; // ✨ הוספנו את ההכרזה על האייקון
         TextView tvUserName, tvUserId, tvUserRoleBadge;
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
             imgUserAvatar = itemView.findViewById(R.id.imgUserAvatar);
+            // ✨ קישרנו את האייקון לקובץ ה-XML
+            imgExceptionWarning = itemView.findViewById(R.id.imgExceptionWarning);
             tvUserName = itemView.findViewById(R.id.tvUserName);
             tvUserId = itemView.findViewById(R.id.tvUserId);
             tvUserRoleBadge = itemView.findViewById(R.id.tvUserRoleBadge);

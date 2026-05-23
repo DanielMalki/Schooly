@@ -30,7 +30,6 @@ import com.google.firebase.firestore.Blob;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.io.ByteArrayOutputStream;
@@ -62,7 +61,8 @@ public class UserDetailActivity extends BaseMenuActivity {
 
     // רכיבי תלמיד
     private LinearLayout layoutStudentFields;
-    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerMajor1Group, spinnerMajor2Group;
+    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerSportsGroup, spinnerMajor1Group, spinnerMajor2Group;
+    private TextView tvWarningHomeroom, tvWarningMath, tvWarningEnglish, tvWarningSports; // ✨ אזהרות דינמיות
 
     // רכיבי מורה
     private LinearLayout layoutTeacherFields;
@@ -73,7 +73,6 @@ public class UserDetailActivity extends BaseMenuActivity {
     private FirebaseFirestore db;
     private String selectedUserId;
 
-    // החזקת ה-Bitmap המעודכן או סימון למחיקה
     private byte[] imageBytesBlob = null;
     private boolean shouldDeletePicture = false;
 
@@ -81,7 +80,6 @@ public class UserDetailActivity extends BaseMenuActivity {
     private String currentAdminId;
     private int targetUserType;
 
-    // מיפוי חכם של תפקידים למניעת בלבול בגלל שינוי דינמי של ה-Spinner
     private ArrayList<Integer> availableRoleIds = new ArrayList<>();
 
     // רשימות נתונים
@@ -93,6 +91,7 @@ public class UserDetailActivity extends BaseMenuActivity {
     private ArrayList<String> homeroomNames = new ArrayList<>(), homeroomIds = new ArrayList<>();
     private ArrayList<String> mathNames = new ArrayList<>(), mathIds = new ArrayList<>();
     private ArrayList<String> englishNames = new ArrayList<>(), englishIds = new ArrayList<>();
+    private ArrayList<String> sportsNames = new ArrayList<>(), sportsIds = new ArrayList<>(); // ✨ רשימות ספורט
     private ArrayList<String> majorNames = new ArrayList<>(), majorIds = new ArrayList<>();
 
     private final ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(
@@ -154,13 +153,33 @@ public class UserDetailActivity extends BaseMenuActivity {
         spinnerHomeroom = findViewById(R.id.spinnerHomeroom);
         spinnerMathGroup = findViewById(R.id.spinnerMathGroup);
         spinnerEnglishGroup = findViewById(R.id.spinnerEnglishGroup);
+        spinnerSportsGroup = findViewById(R.id.spinnerSportsGroup); // ✨
         spinnerMajor1Group = findViewById(R.id.spinnerMajor1Group);
         spinnerMajor2Group = findViewById(R.id.spinnerMajor2Group);
+
+        tvWarningHomeroom = findViewById(R.id.tvWarningHomeroom);
+        tvWarningMath = findViewById(R.id.tvWarningMath);
+        tvWarningEnglish = findViewById(R.id.tvWarningEnglish);
+        tvWarningSports = findViewById(R.id.tvWarningSports);
 
         layoutTeacherFields = findViewById(R.id.layoutTeacherFields);
         layoutSelectedSubjectsList = findViewById(R.id.layoutSelectedSubjectsList);
         tvSelectSubjects = findViewById(R.id.tvSelectSubjects);
         btnQuickAddSubject = findViewById(R.id.btnQuickAddSubject);
+
+        // ✨ מאזין חכם: ברגע שבוחרים כיתה, נבדוק אם צריך להעלים את טקסט האזהרה!
+        AdapterView.OnItemSelectedListener warningListener = new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                checkMandatoryClassesWarnings();
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        };
+        spinnerHomeroom.setOnItemSelectedListener(warningListener);
+        spinnerMathGroup.setOnItemSelectedListener(warningListener);
+        spinnerEnglishGroup.setOnItemSelectedListener(warningListener);
+        spinnerSportsGroup.setOnItemSelectedListener(warningListener);
 
         SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
         currentAdminType = prefs.getInt("userType", 2);
@@ -178,25 +197,21 @@ public class UserDetailActivity extends BaseMenuActivity {
         loadSubjectsDataAndUser();
     }
 
-    // 🔥 התיקון המרכזי: הגדרת רשימת התפקידים הזמינים בצורה דינמית ומאובטחת לפי ה-Target
     private void setupRoleSpinnerStructure(int targetType) {
         ArrayList<String> rolesToDisplay = new ArrayList<>();
         availableRoleIds.clear();
 
         if (targetType == 0) {
-            // תלמיד - לא ניתן להעביר אותו לשום תפקיד אחר
             rolesToDisplay.add("Student");
             availableRoleIds.add(0);
-            spinnerRole.setEnabled(false); // חוסם את הספינר לחלוטין
+            spinnerRole.setEnabled(false);
         } else if (targetType == 1 || targetType == 2) {
-            // מורים ומנהלי בתי ספר - יכולים לעבור רק בינם לבין עצמם!
             rolesToDisplay.add("Teacher");
             availableRoleIds.add(1);
             rolesToDisplay.add("School Admin");
             availableRoleIds.add(2);
             spinnerRole.setEnabled(true);
         } else if (targetType == 3) {
-            // מנהל סקולי על - חסום לשינוי
             rolesToDisplay.add("Schooly Admin");
             availableRoleIds.add(3);
             spinnerRole.setEnabled(false);
@@ -205,7 +220,6 @@ public class UserDetailActivity extends BaseMenuActivity {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, rolesToDisplay);
         spinnerRole.setAdapter(adapter);
 
-        // סימון התפקיד הנוכחי בתוך הרשימה המצומצמת החדשה
         int positionToSelect = availableRoleIds.indexOf(targetType);
         if (positionToSelect >= 0) {
             spinnerRole.setSelection(positionToSelect);
@@ -265,6 +279,7 @@ public class UserDetailActivity extends BaseMenuActivity {
             initListWithPlaceholder(homeroomNames, homeroomIds, "Select Homeroom Class *");
             initListWithPlaceholder(mathNames, mathIds, "Select Math Group *");
             initListWithPlaceholder(englishNames, englishIds, "Select English Group *");
+            initListWithPlaceholder(sportsNames, sportsIds, "Select Sports Group *"); // ✨ ספורט
             initListWithPlaceholder(majorNames, majorIds, "Select Major Group (Optional)");
 
             for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
@@ -277,6 +292,7 @@ public class UserDetailActivity extends BaseMenuActivity {
                     case "homeroom": homeroomNames.add(className); homeroomIds.add(classId); break;
                     case "math": mathNames.add(className); mathIds.add(classId); break;
                     case "english": englishNames.add(className); englishIds.add(classId); break;
+                    case "sports": sportsNames.add(className); sportsIds.add(classId); break; // ✨ ספורט
                     case "major": majorNames.add(className); majorIds.add(classId); break;
                 }
             }
@@ -284,6 +300,7 @@ public class UserDetailActivity extends BaseMenuActivity {
             spinnerHomeroom.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, homeroomNames));
             spinnerMathGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathNames));
             spinnerEnglishGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishNames));
+            spinnerSportsGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, sportsNames)); // ✨ ספורט
             spinnerMajor1Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
             spinnerMajor2Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
 
@@ -297,6 +314,16 @@ public class UserDetailActivity extends BaseMenuActivity {
         names.clear(); ids.clear(); names.add(placeholder); ids.add("");
     }
 
+    // ✨ הפונקציה שמעדכנת את האזהרות האדומות בזמן אמת!
+    private void checkMandatoryClassesWarnings() {
+        if (targetUserType != 0) return; // רלוונטי רק לתלמידים
+
+        if (tvWarningHomeroom != null) tvWarningHomeroom.setVisibility(spinnerHomeroom.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
+        if (tvWarningMath != null) tvWarningMath.setVisibility(spinnerMathGroup.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
+        if (tvWarningEnglish != null) tvWarningEnglish.setVisibility(spinnerEnglishGroup.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
+        if (tvWarningSports != null) tvWarningSports.setVisibility(spinnerSportsGroup.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
+    }
+
     private void fetchTargetUserFullProfile() {
         db.collection("users").document(selectedUserId).get().addOnSuccessListener(doc -> {
             if (!doc.exists()) return;
@@ -304,7 +331,6 @@ public class UserDetailActivity extends BaseMenuActivity {
             Long typeLong = doc.getLong("type");
             targetUserType = (typeLong != null) ? typeLong.intValue() : 0;
 
-            // 🔥 עדכון הספינר באופן מוגן
             setupRoleSpinnerStructure(targetUserType);
 
             etTz.setText(selectedUserId);
@@ -324,12 +350,27 @@ public class UserDetailActivity extends BaseMenuActivity {
             if (targetUserType == 0) {
                 layoutStudentFields.setVisibility(View.VISIBLE);
                 layoutTeacherFields.setVisibility(View.GONE);
-                List<DocumentReference> classRefs = (List<DocumentReference>) doc.get("classes");
-                if (classRefs != null) {
+
+                Object classesObj = doc.get("classes");
+                if (classesObj instanceof Map) {
+                    Map<String, Object> classesMap = (Map<String, Object>) classesObj;
+                    for (Map.Entry<String, Object> entry : classesMap.entrySet()) {
+                        if (entry.getValue() instanceof DocumentReference) {
+                            setTargetSpinnerSelection(((DocumentReference) entry.getValue()).getId());
+                        }
+                    }
+                } else if (classesObj instanceof List) {
+                    List<DocumentReference> classRefs = (List<DocumentReference>) classesObj;
                     for (DocumentReference ref : classRefs) {
-                        setTargetSpinnerSelection(ref.getId());
+                        if (ref != null) {
+                            setTargetSpinnerSelection(ref.getId());
+                        }
                     }
                 }
+
+                // אחרי שטעינו את הכל, נבדוק אם צריך להדליק אזהרות אדומות!
+                checkMandatoryClassesWarnings();
+
             } else if (targetUserType == 1 || targetUserType == 2) {
                 layoutStudentFields.setVisibility(View.GONE);
                 layoutTeacherFields.setVisibility(View.VISIBLE);
@@ -399,6 +440,7 @@ public class UserDetailActivity extends BaseMenuActivity {
         if (homeroomIds.contains(id)) spinnerHomeroom.setSelection(homeroomIds.indexOf(id));
         else if (mathIds.contains(id)) spinnerMathGroup.setSelection(mathIds.indexOf(id));
         else if (englishIds.contains(id)) spinnerEnglishGroup.setSelection(englishIds.indexOf(id));
+        else if (sportsIds.contains(id)) spinnerSportsGroup.setSelection(sportsIds.indexOf(id)); // ✨ ספורט
         else if (majorIds.contains(id)) {
             if (spinnerMajor1Group.getSelectedItemPosition() == 0) spinnerMajor1Group.setSelection(majorIds.indexOf(id));
             else spinnerMajor2Group.setSelection(majorIds.indexOf(id));
@@ -436,6 +478,7 @@ public class UserDetailActivity extends BaseMenuActivity {
         spinnerHomeroom.setEnabled(canEdit);
         spinnerMathGroup.setEnabled(canEdit);
         spinnerEnglishGroup.setEnabled(canEdit);
+        spinnerSportsGroup.setEnabled(canEdit); // ✨ ספורט
         spinnerMajor1Group.setEnabled(canEdit);
         spinnerMajor2Group.setEnabled(canEdit);
 
@@ -456,7 +499,6 @@ public class UserDetailActivity extends BaseMenuActivity {
             Toast.makeText(this, "View-only mode", Toast.LENGTH_SHORT).show();
         }
 
-        // 🔥 התיקון: הספינר מקשיב ומחליף את הפנל של מורה/מנהל לפי הבחירה באופן דינמי
         if (canEdit && (targetUserType == 1 || targetUserType == 2)) {
             spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
@@ -495,7 +537,6 @@ public class UserDetailActivity extends BaseMenuActivity {
         String mName = etMiddleName.getText().toString().trim();
         String email = etNewEmail.getText().toString().trim();
 
-        // 🔥 שליפת ה-ID האמיתי של התפקיד מתוך המערך הדינמי במקום ה-Position היבש של ה-Spinner
         int finalRole = availableRoleIds.get(spinnerRole.getSelectedItemPosition());
 
         if (TextUtils.isEmpty(fName) || TextUtils.isEmpty(lName) || TextUtils.isEmpty(email)) {
@@ -523,17 +564,32 @@ public class UserDetailActivity extends BaseMenuActivity {
         if (shouldDeletePicture) {
             updates.put("profileImageBlob", FieldValue.delete());
         } else if (imageBytesBlob != null) {
-            updates.put("profileImageBlob", Blob.fromBytes(imageBytesBlob));
+            updates.put("profileImageBlob", com.google.firebase.firestore.Blob.fromBytes(imageBytesBlob));
         }
 
         if (finalRole == 0) {
-            ArrayList<DocumentReference> classRefs = new ArrayList<>();
-            classRefs.add(db.collection("classes").document(homeroomIds.get(spinnerHomeroom.getSelectedItemPosition())));
-            classRefs.add(db.collection("classes").document(mathIds.get(spinnerMathGroup.getSelectedItemPosition())));
-            classRefs.add(db.collection("classes").document(englishIds.get(spinnerEnglishGroup.getSelectedItemPosition())));
-            if (spinnerMajor1Group.getSelectedItemPosition() > 0) classRefs.add(db.collection("classes").document(majorIds.get(spinnerMajor1Group.getSelectedItemPosition())));
-            if (spinnerMajor2Group.getSelectedItemPosition() > 0) classRefs.add(db.collection("classes").document(majorIds.get(spinnerMajor2Group.getSelectedItemPosition())));
-            updates.put("classes", classRefs);
+            Map<String, Object> classRefsMap = new HashMap<>();
+
+            int homePos = spinnerHomeroom.getSelectedItemPosition();
+            if (homePos > 0) classRefsMap.put("homeroom", db.collection("classes").document(homeroomIds.get(homePos)));
+
+            int mathPos = spinnerMathGroup.getSelectedItemPosition();
+            if (mathPos > 0) classRefsMap.put("math", db.collection("classes").document(mathIds.get(mathPos)));
+
+            int engPos = spinnerEnglishGroup.getSelectedItemPosition();
+            if (engPos > 0) classRefsMap.put("english", db.collection("classes").document(englishIds.get(engPos)));
+
+            // ✨ שמירת שיעור הספורט למסד הנתונים
+            int sportsPos = spinnerSportsGroup.getSelectedItemPosition();
+            if (sportsPos > 0) classRefsMap.put("sports", db.collection("classes").document(sportsIds.get(sportsPos)));
+
+            int maj1Pos = spinnerMajor1Group.getSelectedItemPosition();
+            if (maj1Pos > 0) classRefsMap.put("major1", db.collection("classes").document(majorIds.get(maj1Pos)));
+
+            int maj2Pos = spinnerMajor2Group.getSelectedItemPosition();
+            if (maj2Pos > 0) classRefsMap.put("major2", db.collection("classes").document(majorIds.get(maj2Pos)));
+
+            updates.put("classes", classRefsMap);
         } else {
             ArrayList<DocumentReference> subRefs = new ArrayList<>();
             for (String subId : chosenSubjectIds) subRefs.add(db.collection("subjects").document(subId));

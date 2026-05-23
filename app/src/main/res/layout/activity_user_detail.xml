@@ -64,14 +64,16 @@
             android:layout_height="50dp"
             android:layout_marginBottom="20dp"
             android:background="#EEEEEE"
-            android:enabled="false"/> <TextView
-        android:id="@+id/tvSchoolTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="School Assignment:"
-        android:textStyle="bold"
-        android:layout_marginBottom="5dp"
-        android:textColor="#333333"/>
+            android:enabled="false"/>
+
+        <TextView
+            android:id="@+id/tvSchoolTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="School Assignment:"
+            android:textStyle="bold"
+            android:layout_marginBottom="5dp"
+            android:textColor="#333333"/>
 
         <EditText
             android:id="@+id/etSchoolLocked"
@@ -201,9 +203,18 @@
                 android:layout_marginBottom="10dp"
                 android:textColor="#333333"/>
 
-            <Spinner android:id="@+id/spinnerHomeroom" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
-            <Spinner android:id="@+id/spinnerMathGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
-            <Spinner android:id="@+id/spinnerEnglishGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
+            <Spinner android:id="@+id/spinnerHomeroom" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
+            <TextView android:id="@+id/tvWarningHomeroom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing Homeroom Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
+
+            <Spinner android:id="@+id/spinnerMathGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
+            <TextView android:id="@+id/tvWarningMath" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing Math Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
+
+            <Spinner android:id="@+id/spinnerEnglishGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
+            <TextView android:id="@+id/tvWarningEnglish" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing English Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
+
+            <Spinner android:id="@+id/spinnerSportsGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
+            <TextView android:id="@+id/tvWarningSports" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing Sports Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
+
             <Spinner android:id="@+id/spinnerMajor1Group" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
             <Spinner android:id="@+id/spinnerMajor2Group" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="20dp" android:background="#EEEEEE"/>
         </LinearLayout>

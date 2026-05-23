@@ -60,5 +60,14 @@
             android:textSize="12sp"
             android:textStyle="bold" />
 
+        <ImageView
+            android:id="@+id/imgExceptionWarning"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:src="@android:drawable/ic_dialog_alert"
+            app:tint="#F44336"
+            android:visibility="gone" />
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

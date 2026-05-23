@@ -45,7 +45,8 @@ public class ManageUsersActivity extends BaseMenuActivity {
     private DocumentReference selectedSchoolRef;
 
     private String currentQuery = "";
-    private int currentRoleFilter = 0; // 0=הכל, 1=תלמידים, 2=מורים, 3=School Admins, 4=Schooly Admins
+    private int currentRoleFilter = 0;
+    // הוספנו לתיעוד: 0=הכל, 1=תלמידים, 2=מורים, 3=School Admins, 4=Schooly Admins, 5=Exception Students
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,10 +78,16 @@ public class ManageUsersActivity extends BaseMenuActivity {
         roleOptions.add("Teachers");       // 2
         roleOptions.add("School Admins");  // 3
 
-        // רק אם המשתמש המחובר הוא Schooly Admin, נאפשר לו לראות ולסנן מנהלי סקולי אחרים
+        // אם המשתמש הוא Schooly Admin, נוסיף לו את האופציה
         if (currentAdminType == 3) {
             roleOptions.add("Schooly Admins"); // 4
+        } else {
+            // אם הוא רק מנהל בית ספר, אנחנו חייבים להוסיף "מקום ריק" לאינדקס 4 כדי ש-5 יישאר 5.
+            roleOptions.add("---"); // 4 (מוסתר או לא לשימוש)
         }
+
+        // ✨ הוספת תלמידים חריגים לאינדקס 5!
+        roleOptions.add("Exception Students ⚠️"); // 5
 
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, roleOptions);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -112,6 +119,11 @@ public class ManageUsersActivity extends BaseMenuActivity {
         spinnerFilterRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // אם בחרנו את המקום הריק (אינדקס 4 אצל מנהל בית ספר), נתעלם
+                if (position == 4 && currentAdminType != 3) {
+                    return;
+                }
+
                 currentRoleFilter = position;
                 applyFilterAndCheckEmpty();
             }
@@ -121,7 +133,6 @@ public class ManageUsersActivity extends BaseMenuActivity {
         });
     }
 
-    // 📋 בתוך ManageUsersActivity.java - שנה את זה ל-package-private או public
     final ActivityResultLauncher<Intent> editUserLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -202,6 +213,13 @@ public class ManageUsersActivity extends BaseMenuActivity {
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         User user = document.toObject(User.class);
                         user.setUserId(document.getId());
+
+                        // קריאת מפת הכיתות ושמירתה למודל המשתמש
+                        Object classesObj = document.get("classes");
+                        if (classesObj instanceof java.util.Map) {
+                            user.setClasses((java.util.Map<String, DocumentReference>) classesObj);
+                        }
+
                         userList.add(user);
                     }
                     adapter.updateList(userList);

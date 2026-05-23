@@ -2,6 +2,7 @@ package daniel.malki.schooly;
 
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.PropertyName;
+import java.util.Map;
 
 public class User {
     private String userId;
@@ -9,6 +10,7 @@ public class User {
     private String email;
     private int type;        // 0=תלמיד, 1=מורה, 2=מנהל בי"ס, 3=מנהל מערכת
     private DocumentReference schoolRef; // הרפרנס החדש לבית הספר!
+    private Map<String, DocumentReference> classes;
 
     public User() {}
 
@@ -44,4 +46,22 @@ public class User {
     public DocumentReference getSchoolRef() { return schoolRef; }
     @PropertyName("schoolRef")
     public void setSchoolRef(DocumentReference schoolRef) { this.schoolRef = schoolRef; }
+
+    @PropertyName("classes")
+    public Map<String, DocumentReference> getClasses() { return classes; }
+    @PropertyName("classes")
+    public void setClasses(Map<String, DocumentReference> classes) { this.classes = classes; }
+
+    // ✨ הפונקציה שמגדירה מיהו תלמיד חריג (מתעלמת מהשמירה לדאטהבייס)
+    @com.google.firebase.firestore.Exclude
+    public boolean isExceptionStudent() {
+        if (this.type != 0) return false; // מורים ומנהלים לא יכולים להיות תלמידים חריגים
+        if (this.classes == null) return true; // אם אין לו כיתות בכלל, הוא חריג
+
+        // בודק אם חסרה אחת מכיתות החובה
+        return !classes.containsKey("homeroom") ||
+                !classes.containsKey("math") ||
+                !classes.containsKey("english") ||
+                !classes.containsKey("sports");
+    }
 }
