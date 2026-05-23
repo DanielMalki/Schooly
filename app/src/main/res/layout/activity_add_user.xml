@@ -186,6 +186,14 @@
                 android:textColor="#FF5722"
                 android:layout_marginBottom="10dp"/>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Mandatory Classes (*)"
+                android:textSize="12sp"
+                android:textColor="#777777"
+                android:layout_marginBottom="4dp"/>
+
             <Spinner
                 android:id="@+id/spinnerHomeroom"
                 android:layout_width="match_parent"
@@ -208,18 +216,33 @@
                 android:background="#FFF3E0"/>
 
             <Spinner
-                android:id="@+id/spinnerMajor1Group"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
-
-            <Spinner
-                android:id="@+id/spinnerMajor2Group"
+                android:id="@+id/spinnerPeGroup"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:layout_marginBottom="15dp"
                 android:background="#FFF3E0"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Optional Majors (Leave unselected if none)"
+                android:textSize="12sp"
+                android:textColor="#777777"
+                android:layout_marginBottom="4dp"/>
+
+            <Spinner
+                android:id="@+id/spinnerMajorAGroup"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginBottom="10dp"
+                android:background="#E8F5E9"/>
+
+            <Spinner
+                android:id="@+id/spinnerMajorBGroup"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginBottom="15dp"
+                android:background="#E8F5E9"/>
         </LinearLayout>
 
         <LinearLayout

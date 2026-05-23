@@ -1,5 +1,6 @@
 package daniel.malki.schooly;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
@@ -24,7 +25,8 @@ import java.util.List;
 public class ManageClassesActivity extends BaseMenuActivity {
 
     private EditText etSearchClass;
-    private Spinner spinnerSchoolSelectClasses; // הספינר החדש
+    private Spinner spinnerSchoolSelectClasses;
+    private Spinner spinnerFilterClassType;
     private RecyclerView rvClasses;
     private TextView tvNoClassesResults;
 
@@ -35,10 +37,12 @@ public class ManageClassesActivity extends BaseMenuActivity {
     private int currentAdminType;
     private String currentAdminId;
 
-    // רשימות לניהול בתי ספר
+    private String currentSearchQuery = "";
+    private String currentTypeFilter = "All Types";
+
     private ArrayList<String> schoolNames = new ArrayList<>();
     private ArrayList<String> schoolIds = new ArrayList<>();
-    private DocumentReference selectedSchoolRef; // null משמעותו "All Schools"
+    private DocumentReference selectedSchoolRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,27 +53,115 @@ public class ManageClassesActivity extends BaseMenuActivity {
 
         etSearchClass = findViewById(R.id.etSearchClass);
         spinnerSchoolSelectClasses = findViewById(R.id.spinnerSchoolSelectClasses);
+        spinnerFilterClassType = findViewById(R.id.spinnerFilterClassType);
         rvClasses = findViewById(R.id.rvClasses);
         tvNoClassesResults = findViewById(R.id.tvNoClassesResults);
 
-        classList = new ArrayList<>();
-        adapter = new ClassAdapter(classList);
         rvClasses.setLayoutManager(new LinearLayoutManager(this));
+        classList = new ArrayList<>();
+
+        adapter = new ClassAdapter(classList, schoolClass -> {
+            Intent intent = new Intent(ManageClassesActivity.this, ClassDetailActivity.class);
+            intent.putExtra("classId", schoolClass.getClassId());
+            startActivity(intent);
+        });
         rvClasses.setAdapter(adapter);
 
-        // קריאת נתוני המנהל המחובר
+        // קריאת נתוני המנהל מה-Session המשותף
         SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
         currentAdminType = prefs.getInt("userType", 2);
         currentAdminId = prefs.getString("userId", "");
 
-        // בדיקת סוג המנהל וקביעת לוגיקת טעינה
+        setupFilters();
+        setupAdminLogic();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (selectedSchoolRef != null || currentAdminType == 3) {
+            fetchClasses();
+        }
+    }
+
+    private void setupAdminLogic() {
         if (currentAdminType == 3) {
             spinnerSchoolSelectClasses.setVisibility(View.VISIBLE);
-            loadAllSchoolsForSchoolyAdmin();
-        } else {
+            loadAllSchoolsForAdmin();
+        } else if (currentAdminType == 2) {
             spinnerSchoolSelectClasses.setVisibility(View.GONE);
-            loadSchoolAdminLocation();
+            loadAdminSchoolAndFetchClasses();
+        } else {
+            Toast.makeText(this, "Access Denied", Toast.LENGTH_SHORT).show();
+            finish();
         }
+    }
+
+    private void loadAllSchoolsForAdmin() {
+        db.collection("schools").get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    schoolNames.clear();
+                    schoolIds.clear();
+
+                    schoolNames.add("🌍 All Schools");
+                    schoolIds.add("ALL");
+
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        schoolIds.add(doc.getId());
+                        String sName = doc.getString("displayName");
+                        schoolNames.add(sName != null ? sName : doc.getId());
+                    }
+
+                    ArrayAdapter<String> schoolAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, schoolNames);
+                    schoolAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    spinnerSchoolSelectClasses.setAdapter(schoolAdapter);
+
+                    spinnerSchoolSelectClasses.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                        @Override
+                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                            if (position == 0) {
+                                selectedSchoolRef = null;
+                            } else {
+                                selectedSchoolRef = db.collection("schools").document(schoolIds.get(position));
+                            }
+                            fetchClasses();
+                        }
+
+                        @Override
+                        public void onNothingSelected(AdapterView<?> parent) {}
+                    });
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Error loading schools", Toast.LENGTH_SHORT).show());
+    }
+
+    private void loadAdminSchoolAndFetchClasses() {
+        if (currentAdminId == null || currentAdminId.isEmpty()) return;
+
+        db.collection("users").document(currentAdminId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        selectedSchoolRef = documentSnapshot.getDocumentReference("school");
+                        fetchClasses();
+                    }
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Error finding admin school", Toast.LENGTH_SHORT).show());
+    }
+
+    private void setupFilters() {
+        String[] classTypes = {"All Types", "Homeroom", "Math", "English", "Physical Education", "Major A", "Major B"};
+        ArrayAdapter<String> typeAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, classTypes);
+        typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerFilterClassType.setAdapter(typeAdapter);
+
+        spinnerFilterClassType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                currentTypeFilter = classTypes[position];
+                applyFilterAndCheckEmpty();
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         etSearchClass.addTextChangedListener(new TextWatcher() {
             @Override
@@ -77,8 +169,8 @@ public class ManageClassesActivity extends BaseMenuActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                adapter.filter(s.toString());
-                checkEmptyState();
+                currentSearchQuery = s.toString();
+                applyFilterAndCheckEmpty();
             }
 
             @Override
@@ -86,75 +178,12 @@ public class ManageClassesActivity extends BaseMenuActivity {
         });
     }
 
-    /**
-     * מנהל בית ספר (2) - שליפת ה-schoolRef שלו כדי לסנן את הכיתות
-     */
-    private void loadSchoolAdminLocation() {
-        if (currentAdminId.isEmpty()) return;
-
-        db.collection("users").document(currentAdminId).get()
-                .addOnSuccessListener(adminDoc -> {
-                    if (adminDoc.exists()) {
-                        selectedSchoolRef = adminDoc.getDocumentReference("school");
-                        if (selectedSchoolRef != null) {
-                            fetchClasses();
-                        } else {
-                            Toast.makeText(this, "No school reference assigned to you!", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                })
-                .addOnFailureListener(e -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
-
-    /**
-     * מנהל על (3) - טעינת כל בתי הספר לספינר כולל אפשרות גלובלית
-     */
-    private void loadAllSchoolsForSchoolyAdmin() {
-        db.collection("schools").get().addOnSuccessListener(queryDocumentSnapshots -> {
-            schoolNames.clear();
-            schoolIds.clear();
-
-            schoolNames.add("🌍 All Schools");
-            schoolIds.add("all");
-
-            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                schoolIds.add(doc.getId());
-                String name = doc.getString("displayName");
-                if (name == null) name = doc.getId();
-                schoolNames.add(name);
-            }
-
-            ArrayAdapter<String> schoolAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, schoolNames);
-            spinnerSchoolSelectClasses.setAdapter(schoolAdapter);
-
-            spinnerSchoolSelectClasses.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if (position == 0) {
-                        selectedSchoolRef = null; // All Schools
-                    } else {
-                        selectedSchoolRef = db.collection("schools").document(schoolIds.get(position));
-                    }
-                    fetchClasses();
-                }
-
-                @Override
-                public void onNothingSelected(AdapterView<?> parent) {}
-            });
-        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load schools", Toast.LENGTH_SHORT).show());
-    }
-
-    /**
-     * שליפת הכיתות בפועל מתוך Firestore לפי הסינון שנבחר
-     */
     private void fetchClasses() {
         Query classesQuery;
 
         if (selectedSchoolRef != null) {
-            // סינון לפי בית ספר ספציפי
             classesQuery = db.collection("classes").whereEqualTo("school", selectedSchoolRef);
         } else {
-            // שליפת כל הכיתות של כל בתי הספר יחד
             classesQuery = db.collection("classes");
         }
 
@@ -167,18 +196,21 @@ public class ManageClassesActivity extends BaseMenuActivity {
                         classList.add(schoolClass);
                     }
                     adapter.updateList(classList);
-                    checkEmptyState();
+                    applyFilterAndCheckEmpty();
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Error loading classes: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
-    private void checkEmptyState() {
-        if (adapter.getItemCount() == 0) {
-            tvNoClassesResults.setVisibility(View.VISIBLE);
-        } else {
-            tvNoClassesResults.setVisibility(View.GONE);
+    private void applyFilterAndCheckEmpty() {
+        if (adapter != null) {
+            adapter.filter(currentSearchQuery, currentTypeFilter);
+            if (adapter.getItemCount() == 0) {
+                tvNoClassesResults.setVisibility(View.VISIBLE);
+            } else {
+                tvNoClassesResults.setVisibility(View.GONE);
+            }
         }
     }
 
@@ -189,7 +221,6 @@ public class ManageClassesActivity extends BaseMenuActivity {
 
     @Override
     protected int[] getAllowedUserTypes() {
-        // מתן הרשאה לשני סוגי המנהלים
         return new int[]{2, 3};
     }
 }

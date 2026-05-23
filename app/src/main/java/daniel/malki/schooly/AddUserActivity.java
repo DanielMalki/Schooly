@@ -49,7 +49,7 @@ public class AddUserActivity extends BaseMenuActivity {
 
     // רכיבי תלמיד (קבוצות למידה)
     private LinearLayout layoutStudentFields;
-    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerMajor1Group, spinnerMajor2Group;
+    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerPeGroup, spinnerMajorAGroup, spinnerMajorBGroup; // ✨ שונה ל-spinnerPeGroup
 
     // רכיבי מורה
     private LinearLayout layoutTeacherFields;
@@ -64,11 +64,13 @@ public class AddUserActivity extends BaseMenuActivity {
     private boolean[] checkedSubjectsArray;
     private ArrayList<String> chosenSubjectIds = new ArrayList<>();
 
+    // רשימות נתונים עבור הספינרים של התלמיד
     private ArrayList<String> homeroomNames = new ArrayList<>(), homeroomIds = new ArrayList<>();
     private ArrayList<String> mathNames = new ArrayList<>(), mathIds = new ArrayList<>();
     private ArrayList<String> englishNames = new ArrayList<>(), englishIds = new ArrayList<>();
-    private ArrayList<String> majorNames = new ArrayList<>(), majorIds = new ArrayList<>();
-
+    private ArrayList<String> peNames = new ArrayList<>(), peIds = new ArrayList<>(); // ✨ שונה ל-peNames ו-peIds
+    private ArrayList<String> majorANames = new ArrayList<>(), majorAIds = new ArrayList<>(); // ✨ מורחב א'
+    private ArrayList<String> majorBNames = new ArrayList<>(), majorBIds = new ArrayList<>(); // ✨ מורחב ב'
     @Override
     protected int getLayoutResourceId() { return R.layout.activity_add_user; }
 
@@ -102,8 +104,9 @@ public class AddUserActivity extends BaseMenuActivity {
         spinnerHomeroom = findViewById(R.id.spinnerHomeroom);
         spinnerMathGroup = findViewById(R.id.spinnerMathGroup);
         spinnerEnglishGroup = findViewById(R.id.spinnerEnglishGroup);
-        spinnerMajor1Group = findViewById(R.id.spinnerMajor1Group);
-        spinnerMajor2Group = findViewById(R.id.spinnerMajor2Group);
+        spinnerPeGroup = findViewById(R.id.spinnerPeGroup); // ✨ אתחול עם ה-ID החדש מה-XML
+        spinnerMajorAGroup = findViewById(R.id.spinnerMajorAGroup);
+        spinnerMajorBGroup = findViewById(R.id.spinnerMajorBGroup);
 
         // אתחול שדות מורה
         layoutTeacherFields = findViewById(R.id.layoutTeacherFields);
@@ -120,24 +123,18 @@ public class AddUserActivity extends BaseMenuActivity {
 
         setupRoleSpinner();
 
-        // 1. קריאת זהות המנהל המחובר מתוך ה-Session המקומי
         SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
         currentAdminType = prefs.getInt("userType", 2);
         currentAdminId = prefs.getString("userId", "");
 
-        // 2. קביעת נראות שדות בית הספר
         checkAdminSchoolStatus();
 
-        // 3. טעינת נתונים משלימים מה-DB
         loadSubjectsFromFirestore();
         loadClassesFromFirestore();
 
         btnSaveUser.setOnClickListener(v -> saveUserToDatabase());
     }
 
-    /**
-     * קובע את נראות שדות בית הספר על פי דרגת המנהל המחובר
-     */
     private void checkAdminSchoolStatus() {
         if (spinnerRole.getSelectedItemPosition() == 3) {
             setSchoolLayoutVisibility(View.GONE, View.GONE, View.GONE);
@@ -178,9 +175,6 @@ public class AddUserActivity extends BaseMenuActivity {
         if (viewSchoolDivider != null) viewSchoolDivider.setVisibility(generalVisibility);
     }
 
-    /**
-     * טעינת כל המוסדות הקיימים באפליקציה (שליפת displayName)
-     */
     private void loadAllSchoolsForSchoolyAdmin() {
         db.collection("schools").get().addOnSuccessListener(queryDocumentSnapshots -> {
             schoolNames.clear();
@@ -211,16 +205,16 @@ public class AddUserActivity extends BaseMenuActivity {
         spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position == 0) { // תלמיד
+                if (position == 0) {
                     layoutStudentFields.setVisibility(View.VISIBLE);
                     layoutTeacherFields.setVisibility(View.GONE);
                     checkAdminSchoolStatus();
-                } else if (position == 1 || position == 2) { // מורה או אדמין בית ספר
+                } else if (position == 1 || position == 2) {
                     layoutStudentFields.setVisibility(View.GONE);
                     layoutTeacherFields.setVisibility(View.VISIBLE);
                     checkAdminSchoolStatus();
                     layoutTeacherFields.requestLayout();
-                } else if (position == 3) { // מנהל סקולי על
+                } else if (position == 3) {
                     layoutStudentFields.setVisibility(View.GONE);
                     layoutTeacherFields.setVisibility(View.GONE);
                     setSchoolLayoutVisibility(View.GONE, View.GONE, View.GONE);
@@ -231,9 +225,6 @@ public class AddUserActivity extends BaseMenuActivity {
         });
     }
 
-    /**
-     * דיאלוג מהיר להוספת בית ספר חדש עם קוד רנדומלי
-     */
     private void showQuickAddSchoolDialog() {
         final EditText etInput = new EditText(this);
         etInput.setHint("School Name (e.g., Ironi Alef)");
@@ -258,7 +249,6 @@ public class AddUserActivity extends BaseMenuActivity {
         Map<String, Object> schoolData = new HashMap<>();
         schoolData.put("displayName", schoolName);
 
-        // .add() מייצר אוטומטית מפתח רנדומלי ייחודי ב-Firestore
         db.collection("schools")
                 .add(schoolData)
                 .addOnSuccessListener(documentReference -> {
@@ -269,6 +259,7 @@ public class AddUserActivity extends BaseMenuActivity {
     }
 
     private void loadSubjectsFromFirestore() {
+        db.collection("classes");
         db.collection("subjects").get().addOnSuccessListener(queryDocumentSnapshots -> {
             subjectNames.clear();
             subjectIds.clear();
@@ -336,10 +327,13 @@ public class AddUserActivity extends BaseMenuActivity {
         }
 
         classesQuery.get().addOnSuccessListener(queryDocumentSnapshots -> {
+            // אתחול כל הרשימות עם הפלייסהולדרים המתאימים
             initListWithPlaceholder(homeroomNames, homeroomIds, "Select Homeroom Class *");
             initListWithPlaceholder(mathNames, mathIds, "Select Math Group *");
             initListWithPlaceholder(englishNames, englishIds, "Select English Group *");
-            initListWithPlaceholder(majorNames, majorIds, "Select Major Group (Optional)");
+            initListWithPlaceholder(peNames, peIds, "Select Physical Education Group *");
+            initListWithPlaceholder(majorANames, majorAIds, "Select Major 1 Group (Optional)"); // ✨ פלייסנולדר מורחב א'
+            initListWithPlaceholder(majorBNames, majorBIds, "Select Major 2 Group (Optional)"); // ✨ פלייסנולדר מורחב ב'
 
             for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                 String classId = doc.getId();
@@ -357,16 +351,28 @@ public class AddUserActivity extends BaseMenuActivity {
                     case "english":
                         englishNames.add(className); englishIds.add(classId);
                         break;
-                    case "major":
-                        majorNames.add(className); majorIds.add(classId);
+                    case "pe":
+                        peNames.add(className); peIds.add(classId);
+                        break;
+                    case "major a": // ✨ פיצול למורחב א' מתוך ה-DB
+                        majorANames.add(className); majorAIds.add(classId);
+                        break;
+                    case "major b": // ✨ פיצול למורחב ב' מתוך ה-DB
+                        majorBNames.add(className); majorBIds.add(classId);
                         break;
                 }
             }
+
+            // הצמדת האדפטרים המעודכנים והנפרדים לכל ספינר
             spinnerHomeroom.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, homeroomNames));
             spinnerMathGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathNames));
             spinnerEnglishGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishNames));
-            spinnerMajor1Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
-            spinnerMajor2Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
+            spinnerPeGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, peNames));
+
+            // ✨ כל ספינר מקבל עכשיו את הרשימה הייעודית שלו
+            spinnerMajorAGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorANames));
+            spinnerMajorBGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorBNames));
+
         }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load classes", Toast.LENGTH_SHORT).show());
     }
 
@@ -440,26 +446,39 @@ public class AddUserActivity extends BaseMenuActivity {
             return;
         }
 
-        ArrayList<DocumentReference> studentClassRefs = new ArrayList<>();
+        Map<String, DocumentReference> studentClassesMap = new HashMap<>();
         ArrayList<DocumentReference> teacherSubjectRefs = new ArrayList<>();
 
         if (type == 0) { // תלמיד
+            // וידוא שכל מקצועות החובה נבחרו כולל PE
             if (spinnerHomeroom.getSelectedItemPosition() == 0 ||
                     spinnerMathGroup.getSelectedItemPosition() == 0 ||
-                    spinnerEnglishGroup.getSelectedItemPosition() == 0) {
-                Toast.makeText(this, "Please select Homeroom, Math, and English groups!", Toast.LENGTH_LONG).show();
+                    spinnerEnglishGroup.getSelectedItemPosition() == 0 ||
+                    spinnerPeGroup.getSelectedItemPosition() == 0) {
+                Toast.makeText(this, "Please select Homeroom, Math, English, and Physical Education groups!", Toast.LENGTH_LONG).show();
                 return;
             }
-            studentClassRefs.add(db.collection("classes").document(homeroomIds.get(spinnerHomeroom.getSelectedItemPosition())));
-            studentClassRefs.add(db.collection("classes").document(mathIds.get(spinnerMathGroup.getSelectedItemPosition())));
-            studentClassRefs.add(db.collection("classes").document(englishIds.get(spinnerEnglishGroup.getSelectedItemPosition())));
 
-            if (spinnerMajor1Group.getSelectedItemPosition() > 0) {
-                studentClassRefs.add(db.collection("classes").document(majorIds.get(spinnerMajor1Group.getSelectedItemPosition())));
+            // שמירת מקצועות החובה למפה
+            studentClassesMap.put("homeroom", db.collection("classes").document(homeroomIds.get(spinnerHomeroom.getSelectedItemPosition())));
+            studentClassesMap.put("math", db.collection("classes").document(mathIds.get(spinnerMathGroup.getSelectedItemPosition())));
+            studentClassesMap.put("english", db.collection("classes").document(englishIds.get(spinnerEnglishGroup.getSelectedItemPosition())));
+            studentClassesMap.put("pe", db.collection("classes").document(peIds.get(spinnerPeGroup.getSelectedItemPosition())));
+
+            // ✨ שמירת מורחב א' (major a) מתוך רשימת ה-IDs הייעודית שלו
+            if (spinnerMajorAGroup.getSelectedItemPosition() > 0) {
+                studentClassesMap.put("major a", db.collection("classes").document(majorAIds.get(spinnerMajorAGroup.getSelectedItemPosition())));
+            } else {
+                studentClassesMap.put("major a", null);
             }
-            if (spinnerMajor2Group.getSelectedItemPosition() > 0) {
-                studentClassRefs.add(db.collection("classes").document(majorIds.get(spinnerMajor2Group.getSelectedItemPosition())));
+
+            // ✨ שמירת מורחב ב' (major b) מתוך רשימת ה-IDs הייעודית שלו
+            if (spinnerMajorBGroup.getSelectedItemPosition() > 0) {
+                studentClassesMap.put("major b", db.collection("classes").document(majorBIds.get(spinnerMajorBGroup.getSelectedItemPosition())));
+            } else {
+                studentClassesMap.put("major b", null);
             }
+
         } else if (type == 1 || type == 2) {
             if (chosenSubjectIds.isEmpty()) {
                 Toast.makeText(this, "Please select at least one teachable subject!", Toast.LENGTH_LONG).show();
@@ -475,7 +494,7 @@ public class AddUserActivity extends BaseMenuActivity {
                 etTz.setError("User already exists!");
                 new AlertDialog.Builder(this)
                         .setTitle("שגיאה ביצירת משתמש 🚫")
-                        .setMessage("תעודת הזהות שהזנת (" + tz + ") כבר קייтая במערכת.")
+                        .setMessage("תעודת הזהות שהזנת (" + tz + ") כבר קיימת במערכת.")
                         .setPositiveButton("הבנתי", null)
                         .show();
             } else {
@@ -494,7 +513,7 @@ public class AddUserActivity extends BaseMenuActivity {
                 }
 
                 if (type == 0) {
-                    userMap.put("classes", studentClassRefs);
+                    userMap.put("classes", studentClassesMap);
                 } else if (type == 1 || type == 2) {
                     userMap.put("teachableSubjects", teacherSubjectRefs);
                 }
@@ -508,13 +527,33 @@ public class AddUserActivity extends BaseMenuActivity {
     }
 
     private void clearForm() {
-        etTz.setText(""); etFirstName.setText(""); etLastName.setText(""); etMiddleName.setText(""); etEmail.setText(""); etPassword.setText("");
+        // איפוס שדות הטקסט
+        etTz.setText("");
+        etFirstName.setText("");
+        etLastName.setText("");
+        etMiddleName.setText("");
+        etEmail.setText("");
+        etPassword.setText("");
+
+        // איפוס בחירת התפקיד
         spinnerRole.setSelection(0);
-        spinnerHomeroom.setSelection(0); spinnerMathGroup.setSelection(0); spinnerEnglishGroup.setSelection(0);
-        spinnerMajor1Group.setSelection(0); spinnerMajor2Group.setSelection(0);
+
+        // איפוס קבוצות הלימוד של החובה
+        spinnerHomeroom.setSelection(0);
+        spinnerMathGroup.setSelection(0);
+        spinnerEnglishGroup.setSelection(0);
+        spinnerPeGroup.setSelection(0); // ✨ איפוס ספינר PE (חינוך גופני)
+
+        // איפוס קבוצות הלימוד של המורחבים (מפוצל לפי מורחב א' ומורחב ב')
+        spinnerMajorAGroup.setSelection(0);
+        spinnerMajorBGroup.setSelection(0);
+
+        // ניקוי ואיפוס המקצועות שניתן ללמד (עבור מורים)
         chosenSubjectIds.clear();
         if (checkedSubjectsArray != null) {
-            for (int i = 0; i < checkedSubjectsArray.length; i++) checkedSubjectsArray[i] = false;
+            for (int i = 0; i < checkedSubjectsArray.length; i++) {
+                checkedSubjectsArray[i] = false;
+            }
         }
         if (layoutSelectedSubjectsList != null) {
             layoutSelectedSubjectsList.removeAllViews();
