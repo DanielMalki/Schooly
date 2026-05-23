@@ -33,7 +33,7 @@ import java.util.Map;
 public class ProfileActivity extends BaseMenuActivity {
 
     private ImageView imgAvatar;
-    private TextView tvFullName, tvRole, tvSchoolName; // ✨ הוספנו את tvSchoolName
+    private TextView tvFullName, tvRole, tvSchoolName;
 
     private int userType = 0;
 
@@ -55,7 +55,7 @@ public class ProfileActivity extends BaseMenuActivity {
         imgAvatar = findViewById(R.id.imgAvatar);
         tvFullName = findViewById(R.id.tvFullName);
         tvRole = findViewById(R.id.tvRole);
-        tvSchoolName = findViewById(R.id.tvSchoolName); // ✨ אתחול הרכיב החדש
+        tvSchoolName = findViewById(R.id.tvSchoolName);
 
         cardAcademicInfo = findViewById(R.id.cardAcademicInfo);
         tvAcademicHeader = findViewById(R.id.tvAcademicHeader);
@@ -131,8 +131,6 @@ public class ProfileActivity extends BaseMenuActivity {
         db.collection("users").document(userId).update("profileImageBlob", blob)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Picture saved perfectly! 🚀", Toast.LENGTH_SHORT).show();
-
-                    // 🔥 תוקן: קריאה לפונקציית הרענון הקיימת במקום לפונקציה לא קיימת
                     loadUserData();
                 });
     }
@@ -188,7 +186,6 @@ public class ProfileActivity extends BaseMenuActivity {
                         tvSchoolName.setText("No School Assigned");
                     }
                 } else {
-                    // אצל מנהל על (רמה 3) אין מוסד ספציפי
                     tvSchoolName.setVisibility(View.GONE);
                 }
 
@@ -201,18 +198,15 @@ public class ProfileActivity extends BaseMenuActivity {
             layoutDynamicInfoContainer.removeAllViews();
         }
 
-        // ✨ התיקון: בדיקת סוגי המשתמשים המשולבת למורים ומנהלים
         if (userType == 0) {
             cardAcademicInfo.setVisibility(View.VISIBLE);
             tvAcademicHeader.setText("My Learning Groups & Teachers");
             fetchStudentCourses(id);
         } else if (userType == 1 || userType == 2) {
-            // 🔥 מורים ומנהלי בתי ספר נכנסים לכאן ומנסים לטעון את המקצועות שלהם תחילה!
             cardAcademicInfo.setVisibility(View.VISIBLE);
             tvAcademicHeader.setText("My Teachable Subjects");
             fetchTeacherSubjects(id);
         } else if (userType == 3) {
-            // מנהל מערכת ראשי (Schooly Admin)
             cardAcademicInfo.setVisibility(View.VISIBLE);
             tvAcademicHeader.setText("System Overseer Info");
             addNoDataTextView("👑 Global Application Administrator\nYou hold full access rights over all schools, global subjects, and system accounts.");
@@ -222,49 +216,109 @@ public class ProfileActivity extends BaseMenuActivity {
     }
 
     /* ---------------- לוגיקת תלמיד: שליפת קבוצות ומורים ---------------- */
+    /* ---------------- לוגיקת תלמיד: שליפת קבוצות ומורים (עם מיון חכם) ---------------- */
     private void fetchStudentCourses(String studentId) {
         db.collection("users").document(studentId).get().addOnSuccessListener(documentSnapshot -> {
             if (!documentSnapshot.exists()) return;
 
-            List<DocumentReference> classRefs = (List<DocumentReference>) documentSnapshot.get("classes");
-            if (classRefs == null || classRefs.isEmpty()) {
+            Map<String, Object> classesMap = (Map<String, Object>) documentSnapshot.get("classes");
+            if (classesMap == null || classesMap.isEmpty()) {
                 addNoDataTextView("Not assigned to any learning groups yet.");
                 return;
             }
 
-            for (DocumentReference classRef : classRefs) {
-                classRef.get().addOnSuccessListener(classDoc -> {
-                    if (!classDoc.exists()) return;
+            // סינון מקדים של מצביעים ריקים (null) שנוצרו ממחיקות
+            List<Map.Entry<String, Object>> validEntries = new ArrayList<>();
+            for (Map.Entry<String, Object> entry : classesMap.entrySet()) {
+                if (entry.getValue() != null) {
+                    validEntries.add(entry);
+                }
+            }
 
-                    String className = classDoc.getString("displayName");
-                    String classType = classDoc.getString("type");
+            if (validEntries.isEmpty()) {
+                addNoDataTextView("Not assigned to any learning groups yet.");
+                return;
+            }
+
+            final int totalValidClasses = validEntries.size();
+            List<StudentCourseItem> fetchedCourses = new ArrayList<>();
+
+            for (Map.Entry<String, Object> entry : validEntries) {
+                String classType = entry.getKey();
+                DocumentReference classRef = (DocumentReference) entry.getValue();
+
+                classRef.get().addOnSuccessListener(classDoc -> {
+                    String className = classDoc.exists() ? classDoc.getString("displayName") : "Unknown Class";
 
                     if ("homeroom".equals(classType)) {
-                        addCourseRowView("🏠 Homeroom Class: " + className, "");
+                        // כיתת אם - אין לה מורה רשום במערך הקורסים, נוסיף מיד
+                        fetchedCourses.add(new StudentCourseItem(classType, className, ""));
+                        checkAndRenderStudentCourses(fetchedCourses, totalValidClasses);
                     } else {
+                        // קבוצת לימוד רגילה - נחפש את המורה שלה
                         List<Map<String, Object>> assignments = (List<Map<String, Object>>) classDoc.get("course_assignments");
-                        final String[] teacherNameContainer = {"Teacher: Unknown"};
+                        DocumentReference teacherRef = null;
 
-                        if (assignments != null) {
+                        if (assignments != null && !assignments.isEmpty()) {
                             for (Map<String, Object> assignment : assignments) {
-                                DocumentReference teacherRef = (DocumentReference) assignment.get("teacher");
-                                if (teacherRef != null) {
-                                    teacherRef.get().addOnSuccessListener(teacherDoc -> {
-                                        if (teacherDoc.exists()) {
-                                            teacherNameContainer[0] = "Teacher: " + teacherDoc.getString("name");
-                                            addCourseRowView("📚 " + className, teacherNameContainer[0]);
-                                        }
-                                    });
-                                    break;
-                                }
+                                teacherRef = (DocumentReference) assignment.get("teacher");
+                                if (teacherRef != null) break;
                             }
+                        }
+
+                        if (teacherRef != null) {
+                            teacherRef.get().addOnSuccessListener(teacherDoc -> {
+                                String teacherName = teacherDoc.exists() ? "Teacher: " + teacherDoc.getString("name") : "Teacher: Unknown";
+                                fetchedCourses.add(new StudentCourseItem(classType, className, teacherName));
+                                checkAndRenderStudentCourses(fetchedCourses, totalValidClasses);
+                            }).addOnFailureListener(e -> {
+                                fetchedCourses.add(new StudentCourseItem(classType, className, "Teacher: Unknown"));
+                                checkAndRenderStudentCourses(fetchedCourses, totalValidClasses);
+                            });
                         } else {
-                            addCourseRowView("📚 " + className, teacherNameContainer[0]);
+                            fetchedCourses.add(new StudentCourseItem(classType, className, "Teacher: Unknown"));
+                            checkAndRenderStudentCourses(fetchedCourses, totalValidClasses);
                         }
                     }
+                }).addOnFailureListener(e -> {
+                    fetchedCourses.add(new StudentCourseItem(classType, "Error Loading", ""));
+                    checkAndRenderStudentCourses(fetchedCourses, totalValidClasses);
                 });
             }
         });
+    }
+
+    // פונקציית עזר שממתינה לסיום הטעינה של כל הקורסים, ממיינת ומציירת אותם
+    private void checkAndRenderStudentCourses(List<StudentCourseItem> fetchedCourses, int totalExpected) {
+        if (fetchedCourses.size() != totalExpected) return; // עדיין לא סיימנו לטעון את הכל
+
+        // 👑 שלב המיון המתוחכם!
+        Collections.sort(fetchedCourses, (item1, item2) -> {
+            boolean isHome1 = "homeroom".equals(item1.classType);
+            boolean isHome2 = "homeroom".equals(item2.classType);
+
+            // חוק א': כיתת אם תמיד עוקפת ומגיעה לראש הרשימה
+            if (isHome1 && !isHome2) return -1;
+            if (!isHome1 && isHome2) return 1;
+
+            // חוק ב': אם שתיהן כיתות אם או שתיהן קבוצות רגילות - נמיין אלפביתית (A-Z)
+            String name1 = item1.className != null ? item1.className : "";
+            String name2 = item2.className != null ? item2.className : "";
+            return name1.compareToIgnoreCase(name2);
+        });
+
+        // 🛠️ עכשיו כשהכל מסודר פיקס, ננקה את המכלול ונציג למשתמש במסך
+        if (layoutDynamicInfoContainer != null) {
+            layoutDynamicInfoContainer.removeAllViews();
+        }
+
+        for (StudentCourseItem item : fetchedCourses) {
+            if ("homeroom".equals(item.classType)) {
+                addCourseRowView("🏠 Homeroom Class: " + item.className, "");
+            } else {
+                addCourseRowView("📚 " + item.className, item.teacherName);
+            }
+        }
     }
 
     /* ---------------- לוגיקת מורה ---------------- */
@@ -286,7 +340,6 @@ public class ProfileActivity extends BaseMenuActivity {
                 return;
             }
 
-            // 🎯 רשימה זמנית שתחזיק את מסמכי המקצועות שנטען מהשרת
             List<com.google.firebase.firestore.DocumentSnapshot> fetchedSubjects = new ArrayList<>();
             final int totalSubjects = subjectRefs.size();
 
@@ -296,10 +349,7 @@ public class ProfileActivity extends BaseMenuActivity {
                         fetchedSubjects.add(subDoc);
                     }
 
-                    // 🔥 ברגע שסיימנו לטעון את כל המקצועות מה-Firestore - נמיין ונציג אותם!
                     if (fetchedSubjects.size() == totalSubjects) {
-
-                        // 👑 שלב המיון האלפביתי (A-Z / א'-ב') לפי השדה displayName
                         Collections.sort(fetchedSubjects, (doc1, doc2) -> {
                             String name1 = doc1.getString("displayName");
                             String name2 = doc2.getString("displayName");
@@ -308,7 +358,6 @@ public class ProfileActivity extends BaseMenuActivity {
                             return name1.compareToIgnoreCase(name2);
                         });
 
-                        // 🛠️ עכשיו כשהם ממוינים פיקס, נעבור עליהם ונצייר אותם על המסך בסדר הנכון
                         for (com.google.firebase.firestore.DocumentSnapshot sortedSubDoc : fetchedSubjects) {
                             String subjectName = sortedSubDoc.getString("displayName");
 
@@ -318,7 +367,6 @@ public class ProfileActivity extends BaseMenuActivity {
                             addSubjectHeaderToBlock(subjectBlock, "📖 " + subjectName);
                             layoutDynamicInfoContainer.addView(subjectBlock);
 
-                            // המשך חיפוש הכיתות למקצוע הספציפי
                             findClassesForTeacherAndSubject(teacherRef, sortedSubDoc.getReference(), subjectBlock);
                         }
                     }
@@ -420,6 +468,19 @@ public class ProfileActivity extends BaseMenuActivity {
         }
     }
 
+    // מחלקת עזר זמנית לצורך מיון כיתות התלמיד
+    private static class StudentCourseItem {
+        String classType;
+        String className;
+        String teacherName;
+
+        StudentCourseItem(String classType, String className, String teacherName) {
+            this.classType = classType;
+            this.className = className;
+            this.teacherName = teacherName;
+        }
+    }
+
     private void addSubjectHeaderToBlock(LinearLayout subjectBlock, String subjectText) {
         TextView tv = new TextView(this);
         tv.setText(subjectText);
@@ -485,11 +546,17 @@ public class ProfileActivity extends BaseMenuActivity {
             case 0: return "Student";
             case 1: return "Teacher";
             case 2: return "School Administrator";
-            case 3: return "Global Schooly Admin"; // ✨ הוספת תמיכה ברמה 3
+            case 3: return "Global Schooly Admin";
             default: return "Unknown";
         }
     }
 
     @Override
     protected int getLayoutResourceId() { return R.layout.activity_profile; }
+
+    // ✨ הפונקציה שמוסיפה הרשאות גישה לכל סוגי המשתמשים באפליקציה!
+    @Override
+    protected int[] getAllowedUserTypes() {
+        return new int[]{0, 1, 2, 3};
+    }
 }

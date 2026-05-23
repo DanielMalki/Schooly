@@ -324,9 +324,25 @@ public class ClassDetailActivity extends BaseMenuActivity {
     }
 
     // ✨ הפונקציה שמוחקת בפועל מ-Firestore
+    // ✨ הפונקציה שמוחקת בפועל מ-Firestore כולל ניקוי המצביעים אצל התלמידים
+    // ✨ הפונקציה שמוחקת בפועל מ-Firestore ומשנה את המצביעים ל-null
     private void deleteClassFromDatabase() {
-        classRef.delete().addOnSuccessListener(aVoid -> {
-            Toast.makeText(this, "Class deleted successfully! 🗑️", Toast.LENGTH_SHORT).show();
+        // פתיחת Batch כדי לבצע את כל המחיקות יחד כפעולה אחת
+        com.google.firebase.firestore.WriteBatch batch = db.batch();
+
+        // 1. הוספת פקודה למחיקת הכיתה עצמה
+        batch.delete(classRef);
+
+        // 2. מעבר על כל התלמידים שבכיתה והוספת פקודה לאיפוס המצביע שלהם
+        for (String studentId : currentStudentIds) {
+            DocumentReference studentRef = db.collection("users").document(studentId);
+            // כאן השינוי: אנחנו מעדכנים את השדה ל-null במקום למחוק אותו
+            batch.update(studentRef, "classes." + classType, null);
+        }
+
+        // 3. שיגור כל הפעולות למסד הנתונים
+        batch.commit().addOnSuccessListener(aVoid -> {
+            Toast.makeText(this, "Class deleted and references set to null! 🗑️", Toast.LENGTH_SHORT).show();
             finish(); // סוגר את המסך וחוזר לרשימה
         }).addOnFailureListener(e -> {
             Toast.makeText(this, "Error deleting class: " + e.getMessage(), Toast.LENGTH_SHORT).show();
