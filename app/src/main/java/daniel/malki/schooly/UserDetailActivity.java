@@ -46,7 +46,7 @@ public class UserDetailActivity extends BaseMenuActivity {
     private ImageButton btnEditAvatar;
     private EditText etTz, etFirstName, etLastName, etMiddleName, etNewEmail;
     private Spinner spinnerRole;
-    private Button btnSaveUserDetails, btnChangePasswordPlaceholder;
+    private Button btnSaveUserDetails, btnChangePasswordPlaceholder, btnDeleteUser; // ✨ הוספנו את btnDeleteUser
 
     // רכיבי בית ספר
     private EditText etSchoolLocked;
@@ -62,7 +62,7 @@ public class UserDetailActivity extends BaseMenuActivity {
     // רכיבי תלמיד
     private LinearLayout layoutStudentFields;
     private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerSportsGroup, spinnerMajor1Group, spinnerMajor2Group;
-    private TextView tvWarningHomeroom, tvWarningMath, tvWarningEnglish, tvWarningSports; // ✨ אזהרות דינמיות
+    private TextView tvWarningHomeroom, tvWarningMath, tvWarningEnglish, tvWarningSports;
 
     // רכיבי מורה
     private LinearLayout layoutTeacherFields;
@@ -91,7 +91,7 @@ public class UserDetailActivity extends BaseMenuActivity {
     private ArrayList<String> homeroomNames = new ArrayList<>(), homeroomIds = new ArrayList<>();
     private ArrayList<String> mathNames = new ArrayList<>(), mathIds = new ArrayList<>();
     private ArrayList<String> englishNames = new ArrayList<>(), englishIds = new ArrayList<>();
-    private ArrayList<String> sportsNames = new ArrayList<>(), sportsIds = new ArrayList<>(); // ✨ רשימות ספורט
+    private ArrayList<String> sportsNames = new ArrayList<>(), sportsIds = new ArrayList<>();
     private ArrayList<String> majorNames = new ArrayList<>(), majorIds = new ArrayList<>();
 
     private final ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(
@@ -141,6 +141,7 @@ public class UserDetailActivity extends BaseMenuActivity {
         etNewEmail = findViewById(R.id.etNewEmail);
         spinnerRole = findViewById(R.id.spinnerRole);
         btnSaveUserDetails = findViewById(R.id.btnSaveUserDetails);
+        btnDeleteUser = findViewById(R.id.btnDeleteUser); // ✨
         btnChangePasswordPlaceholder = findViewById(R.id.btnChangePasswordPlaceholder);
 
         etSchoolLocked = findViewById(R.id.etSchoolLocked);
@@ -153,7 +154,7 @@ public class UserDetailActivity extends BaseMenuActivity {
         spinnerHomeroom = findViewById(R.id.spinnerHomeroom);
         spinnerMathGroup = findViewById(R.id.spinnerMathGroup);
         spinnerEnglishGroup = findViewById(R.id.spinnerEnglishGroup);
-        spinnerSportsGroup = findViewById(R.id.spinnerSportsGroup); // ✨
+        spinnerSportsGroup = findViewById(R.id.spinnerSportsGroup);
         spinnerMajor1Group = findViewById(R.id.spinnerMajor1Group);
         spinnerMajor2Group = findViewById(R.id.spinnerMajor2Group);
 
@@ -167,7 +168,6 @@ public class UserDetailActivity extends BaseMenuActivity {
         tvSelectSubjects = findViewById(R.id.tvSelectSubjects);
         btnQuickAddSubject = findViewById(R.id.btnQuickAddSubject);
 
-        // ✨ מאזין חכם: ברגע שבוחרים כיתה, נבדוק אם צריך להעלים את טקסט האזהרה!
         AdapterView.OnItemSelectedListener warningListener = new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -193,6 +193,7 @@ public class UserDetailActivity extends BaseMenuActivity {
                 Toast.makeText(this, "Password update coming soon!", Toast.LENGTH_SHORT).show());
 
         btnSaveUserDetails.setOnClickListener(v -> saveUserEditsToDatabase());
+        btnDeleteUser.setOnClickListener(v -> showDeleteConfirmationDialog()); // ✨ מאזין ללחיצת מחיקה
 
         loadSubjectsDataAndUser();
     }
@@ -279,7 +280,7 @@ public class UserDetailActivity extends BaseMenuActivity {
             initListWithPlaceholder(homeroomNames, homeroomIds, "Select Homeroom Class *");
             initListWithPlaceholder(mathNames, mathIds, "Select Math Group *");
             initListWithPlaceholder(englishNames, englishIds, "Select English Group *");
-            initListWithPlaceholder(sportsNames, sportsIds, "Select Sports Group *"); // ✨ ספורט
+            initListWithPlaceholder(sportsNames, sportsIds, "Select Sports Group *");
             initListWithPlaceholder(majorNames, majorIds, "Select Major Group (Optional)");
 
             for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
@@ -292,7 +293,7 @@ public class UserDetailActivity extends BaseMenuActivity {
                     case "homeroom": homeroomNames.add(className); homeroomIds.add(classId); break;
                     case "math": mathNames.add(className); mathIds.add(classId); break;
                     case "english": englishNames.add(className); englishIds.add(classId); break;
-                    case "sports": sportsNames.add(className); sportsIds.add(classId); break; // ✨ ספורט
+                    case "sports": sportsNames.add(className); sportsIds.add(classId); break;
                     case "major": majorNames.add(className); majorIds.add(classId); break;
                 }
             }
@@ -300,7 +301,7 @@ public class UserDetailActivity extends BaseMenuActivity {
             spinnerHomeroom.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, homeroomNames));
             spinnerMathGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathNames));
             spinnerEnglishGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishNames));
-            spinnerSportsGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, sportsNames)); // ✨ ספורט
+            spinnerSportsGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, sportsNames));
             spinnerMajor1Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
             spinnerMajor2Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
 
@@ -314,9 +315,8 @@ public class UserDetailActivity extends BaseMenuActivity {
         names.clear(); ids.clear(); names.add(placeholder); ids.add("");
     }
 
-    // ✨ הפונקציה שמעדכנת את האזהרות האדומות בזמן אמת!
     private void checkMandatoryClassesWarnings() {
-        if (targetUserType != 0) return; // רלוונטי רק לתלמידים
+        if (targetUserType != 0) return;
 
         if (tvWarningHomeroom != null) tvWarningHomeroom.setVisibility(spinnerHomeroom.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
         if (tvWarningMath != null) tvWarningMath.setVisibility(spinnerMathGroup.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
@@ -368,7 +368,6 @@ public class UserDetailActivity extends BaseMenuActivity {
                     }
                 }
 
-                // אחרי שטעינו את הכל, נבדוק אם צריך להדליק אזהרות אדומות!
                 checkMandatoryClassesWarnings();
 
             } else if (targetUserType == 1 || targetUserType == 2) {
@@ -440,7 +439,7 @@ public class UserDetailActivity extends BaseMenuActivity {
         if (homeroomIds.contains(id)) spinnerHomeroom.setSelection(homeroomIds.indexOf(id));
         else if (mathIds.contains(id)) spinnerMathGroup.setSelection(mathIds.indexOf(id));
         else if (englishIds.contains(id)) spinnerEnglishGroup.setSelection(englishIds.indexOf(id));
-        else if (sportsIds.contains(id)) spinnerSportsGroup.setSelection(sportsIds.indexOf(id)); // ✨ ספורט
+        else if (sportsIds.contains(id)) spinnerSportsGroup.setSelection(sportsIds.indexOf(id));
         else if (majorIds.contains(id)) {
             if (spinnerMajor1Group.getSelectedItemPosition() == 0) spinnerMajor1Group.setSelection(majorIds.indexOf(id));
             else spinnerMajor2Group.setSelection(majorIds.indexOf(id));
@@ -478,7 +477,7 @@ public class UserDetailActivity extends BaseMenuActivity {
         spinnerHomeroom.setEnabled(canEdit);
         spinnerMathGroup.setEnabled(canEdit);
         spinnerEnglishGroup.setEnabled(canEdit);
-        spinnerSportsGroup.setEnabled(canEdit); // ✨ ספורט
+        spinnerSportsGroup.setEnabled(canEdit);
         spinnerMajor1Group.setEnabled(canEdit);
         spinnerMajor2Group.setEnabled(canEdit);
 
@@ -490,11 +489,13 @@ public class UserDetailActivity extends BaseMenuActivity {
         if (canEdit) {
             btnEditAvatar.setVisibility(View.VISIBLE);
             btnSaveUserDetails.setVisibility(View.VISIBLE);
+            btnDeleteUser.setVisibility(View.VISIBLE); // ✨ הצגת כפתור מחיקה רק למנהל מורשה
             tvSelectSubjects.setOnClickListener(v -> showSubjectsMultiChoiceDialog());
             imgDetailAvatar.setClickable(true);
         } else {
             btnEditAvatar.setVisibility(View.GONE);
             btnSaveUserDetails.setVisibility(View.GONE);
+            btnDeleteUser.setVisibility(View.GONE); // ✨ הסתרת כפתור מחיקה
             imgDetailAvatar.setClickable(false);
             Toast.makeText(this, "View-only mode", Toast.LENGTH_SHORT).show();
         }
@@ -529,6 +530,31 @@ public class UserDetailActivity extends BaseMenuActivity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    // ✨ חלונית אישור אבטחה לפני מחיקה
+    private void showDeleteConfirmationDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete User Profile ⚠️")
+                .setMessage("Are you sure you want to permanently delete this user? This action cannot be undone.")
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton("Yes, Delete", (dialog, which) -> deleteUserFromDatabase())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // ✨ מחיקת המשתמש בפועל מה-Firestore
+    private void deleteUserFromDatabase() {
+        db.collection("users").document(selectedUserId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "User deleted successfully 🗑️", Toast.LENGTH_SHORT).show();
+                    setResult(RESULT_OK); // מודיע למסך הקודם לרענן את הרשימה
+                    finish(); // סוגר את המסך וחוזר חזרה
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error deleting user: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void saveUserEditsToDatabase() {
@@ -579,7 +605,6 @@ public class UserDetailActivity extends BaseMenuActivity {
             int engPos = spinnerEnglishGroup.getSelectedItemPosition();
             if (engPos > 0) classRefsMap.put("english", db.collection("classes").document(englishIds.get(engPos)));
 
-            // ✨ שמירת שיעור הספורט למסד הנתונים
             int sportsPos = spinnerSportsGroup.getSelectedItemPosition();
             if (sportsPos > 0) classRefsMap.put("sports", db.collection("classes").document(sportsIds.get(sportsPos)));
 

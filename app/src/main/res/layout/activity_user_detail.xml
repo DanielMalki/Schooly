@@ -290,5 +290,15 @@
             android:visibility="gone"
             android:textColor="@android:color/white"/>
 
+        <Button
+            android:id="@+id/btnDeleteUser"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="#D32F2F"
+            android:text="Delete User 🗑️"
+            android:visibility="gone"
+            android:textColor="@android:color/white"/>
+
     </LinearLayout>
 </ScrollView>

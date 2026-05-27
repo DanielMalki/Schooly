@@ -1,6 +1,8 @@
 package daniel.malki.schooly;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Patterns;
@@ -15,13 +17,19 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +40,9 @@ public class AddUserActivity extends BaseMenuActivity {
     private Spinner spinnerRole;
     private Button btnSaveUser;
 
+    // כפתורי הייבוא
+    private Button btnImportStudents, btnImportTeachers;
+
     // רכיבי בית ספר הדינמיים
     private EditText etSchoolLocked;
     private Spinner spinnerSchoolSelect;
@@ -41,514 +52,567 @@ public class AddUserActivity extends BaseMenuActivity {
 
     private ArrayList<String> schoolNames = new ArrayList<>();
     private ArrayList<String> schoolIds = new ArrayList<>();
-    private DocumentReference selectedSchool;
+    private DocumentReference selectedSchoolRef;
 
-    // נתונים של המנהל שמחובר כרגע
     private int currentAdminType;
-    private String currentAdminId;
+    private String currentSchoolId;
 
-    // רכיבי תלמיד (קבוצות למידה)
-    private LinearLayout layoutStudentFields;
-    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerPeGroup, spinnerMajorAGroup, spinnerMajorBGroup; // ✨ שונה ל-spinnerPeGroup
+    // אזור תלמיד - ספינרים
+    private LinearLayout layoutStudentGroups;
+    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerPeGroup, spinnerMajorAGroup, spinnerMajorBGroup;
 
-    // רכיבי מורה
-    private LinearLayout layoutTeacherFields;
-    private LinearLayout layoutSelectedSubjectsList;
-    private ImageButton btnQuickAddSubject;
-    private TextView tvSelectSubjects;
-
-    private FirebaseFirestore db;
-
-    private ArrayList<String> subjectNames = new ArrayList<>();
-    private ArrayList<String> subjectIds = new ArrayList<>();
-    private boolean[] checkedSubjectsArray;
-    private ArrayList<String> chosenSubjectIds = new ArrayList<>();
-
-    // רשימות נתונים עבור הספינרים של התלמיד
+    // רשימות נתונים לספינרים (תלמיד)
     private ArrayList<String> homeroomNames = new ArrayList<>(), homeroomIds = new ArrayList<>();
     private ArrayList<String> mathNames = new ArrayList<>(), mathIds = new ArrayList<>();
     private ArrayList<String> englishNames = new ArrayList<>(), englishIds = new ArrayList<>();
-    private ArrayList<String> peNames = new ArrayList<>(), peIds = new ArrayList<>(); // ✨ שונה ל-peNames ו-peIds
-    private ArrayList<String> majorANames = new ArrayList<>(), majorAIds = new ArrayList<>(); // ✨ מורחב א'
-    private ArrayList<String> majorBNames = new ArrayList<>(), majorBIds = new ArrayList<>(); // ✨ מורחב ב'
-    @Override
-    protected int getLayoutResourceId() { return R.layout.activity_add_user; }
+    private ArrayList<String> peNames = new ArrayList<>(), peIds = new ArrayList<>();
+    private ArrayList<String> majorANames = new ArrayList<>(), majorAIds = new ArrayList<>();
+    private ArrayList<String> majorBNames = new ArrayList<>(), majorBIds = new ArrayList<>();
+
+    // אזור מורה
+    private LinearLayout layoutTeacherSubjects;
+    private TextView tvSelectSubjects;
+    private ImageButton btnQuickAddSubject;
+    private LinearLayout layoutSelectedSubjectsList;
+
+    private String[] allSubjectNames;
+    private String[] allSubjectIds;
+    private boolean[] checkedSubjectsArray;
+    private ArrayList<String> chosenSubjectIds = new ArrayList<>();
+
+    private FirebaseFirestore db;
+
+    // לאנצ'רים לייבוא קבצים
+    private final ActivityResultLauncher<Intent> csvTeachersPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Uri csvUri = result.getData().getData();
+                    if (csvUri != null) processTeachersCsvFile(csvUri);
+                }
+            }
+    );
+
+    private final ActivityResultLauncher<Intent> csvStudentsPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    Uri csvUri = result.getData().getData();
+                    if (csvUri != null) processStudentsCsvFile(csvUri);
+                }
+            }
+    );
 
     @Override
-    protected int[] getAllowedUserTypes() { return new int[]{2, 3}; }
+    protected int getLayoutResourceId() {
+        return R.layout.activity_add_user;
+    }
+
+    @Override
+    protected int[] getAllowedUserTypes() {
+        return new int[]{2, 3};
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setTitle("Add New User");
+
         db = FirebaseFirestore.getInstance();
 
-        // אתחול שדות כלליים
-        etTz = findViewById(R.id.etNewTz);
+        SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
+        currentAdminType = prefs.getInt("userType", 2);
+        currentSchoolId = prefs.getString("schoolId", "");
+
+        etTz = findViewById(R.id.etTz);
         etFirstName = findViewById(R.id.etFirstName);
         etLastName = findViewById(R.id.etLastName);
         etMiddleName = findViewById(R.id.etMiddleName);
-        etEmail = findViewById(R.id.etNewEmail);
-        etPassword = findViewById(R.id.etNewPassword);
+        etEmail = findViewById(R.id.etEmail);
+        etPassword = findViewById(R.id.etPassword);
         spinnerRole = findViewById(R.id.spinnerRole);
         btnSaveUser = findViewById(R.id.btnSaveUser);
 
-        // אתחול רכיבי בית ספר
+        btnImportStudents = findViewById(R.id.btnImportStudents);
+        btnImportTeachers = findViewById(R.id.btnImportTeachers);
+
         etSchoolLocked = findViewById(R.id.etSchoolLocked);
         spinnerSchoolSelect = findViewById(R.id.spinnerSchoolSelect);
         btnQuickAddSchool = findViewById(R.id.btnQuickAddSchool);
         tvSchoolTitle = findViewById(R.id.tvSchoolTitle);
         viewSchoolDivider = findViewById(R.id.viewSchoolDivider);
 
-        // אתחול שדות תלמיד
-        layoutStudentFields = findViewById(R.id.layoutStudentFields);
+        layoutStudentGroups = findViewById(R.id.layoutStudentGroups);
         spinnerHomeroom = findViewById(R.id.spinnerHomeroom);
         spinnerMathGroup = findViewById(R.id.spinnerMathGroup);
         spinnerEnglishGroup = findViewById(R.id.spinnerEnglishGroup);
-        spinnerPeGroup = findViewById(R.id.spinnerPeGroup); // ✨ אתחול עם ה-ID החדש מה-XML
+        spinnerPeGroup = findViewById(R.id.spinnerPeGroup);
         spinnerMajorAGroup = findViewById(R.id.spinnerMajorAGroup);
         spinnerMajorBGroup = findViewById(R.id.spinnerMajorBGroup);
 
-        // אתחול שדות מורה
-        layoutTeacherFields = findViewById(R.id.layoutTeacherFields);
-        layoutSelectedSubjectsList = findViewById(R.id.layoutSelectedSubjectsList);
+        layoutTeacherSubjects = findViewById(R.id.layoutTeacherSubjects);
         tvSelectSubjects = findViewById(R.id.tvSelectSubjects);
         btnQuickAddSubject = findViewById(R.id.btnQuickAddSubject);
-
-        tvSelectSubjects.setOnClickListener(v -> showSubjectsMultiChoiceDialog());
-        btnQuickAddSubject.setOnClickListener(v -> showQuickAddSubjectDialog());
-
-        if (btnQuickAddSchool != null) {
-            btnQuickAddSchool.setOnClickListener(v -> showQuickAddSchoolDialog());
-        }
+        layoutSelectedSubjectsList = findViewById(R.id.layoutSelectedSubjectsList);
 
         setupRoleSpinner();
+        setupSchoolLogic();
 
-        SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
-        currentAdminType = prefs.getInt("userType", 2);
-        currentAdminId = prefs.getString("userId", "");
+        btnSaveUser.setOnClickListener(v -> saveUser());
 
-        checkAdminSchoolStatus();
-
-        loadSubjectsFromFirestore();
-        loadClassesFromFirestore();
-
-        btnSaveUser.setOnClickListener(v -> saveUserToDatabase());
-    }
-
-    private void checkAdminSchoolStatus() {
-        if (spinnerRole.getSelectedItemPosition() == 3) {
-            setSchoolLayoutVisibility(View.GONE, View.GONE, View.GONE);
-            return;
-        }
-
-        if (currentAdminType == 2) {
-            setSchoolLayoutVisibility(View.VISIBLE, View.GONE, View.GONE);
-
-            if (!currentAdminId.isEmpty()) {
-                db.collection("users").document(currentAdminId).get().addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        selectedSchool = documentSnapshot.getDocumentReference("school");
-                        if (selectedSchool != null) {
-                            selectedSchool.get().addOnSuccessListener(schoolDoc -> {
-                                if (schoolDoc.exists()) {
-                                    String schoolName = schoolDoc.getString("displayName");
-                                    etSchoolLocked.setText(schoolName != null ? schoolName : selectedSchool.getId());
-                                }
-                            });
-                        }
-                    }
-                });
-            }
-        } else if (currentAdminType == 3) {
-            setSchoolLayoutVisibility(View.GONE, View.VISIBLE, View.VISIBLE);
-            loadAllSchoolsForSchoolyAdmin();
-        }
-    }
-
-    private void setSchoolLayoutVisibility(int lockedVis, int selectVis, int quickAddVis) {
-        if (etSchoolLocked != null) etSchoolLocked.setVisibility(lockedVis);
-        if (spinnerSchoolSelect != null) spinnerSchoolSelect.setVisibility(selectVis);
-        if (btnQuickAddSchool != null) btnQuickAddSchool.setVisibility(quickAddVis);
-
-        int generalVisibility = (lockedVis == View.GONE && selectVis == View.GONE) ? View.GONE : View.VISIBLE;
-        if (tvSchoolTitle != null) tvSchoolTitle.setVisibility(generalVisibility);
-        if (viewSchoolDivider != null) viewSchoolDivider.setVisibility(generalVisibility);
-    }
-
-    private void loadAllSchoolsForSchoolyAdmin() {
-        db.collection("schools").get().addOnSuccessListener(queryDocumentSnapshots -> {
-            schoolNames.clear();
-            schoolIds.clear();
-            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                schoolIds.add(doc.getId());
-                String name = doc.getString("displayName");
-                if (name == null) name = doc.getId();
-                schoolNames.add(name);
-            }
-            ArrayAdapter<String> schoolAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, schoolNames);
-            spinnerSchoolSelect.setAdapter(schoolAdapter);
-
-            spinnerSchoolSelect.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    selectedSchool = db.collection("schools").document(schoolIds.get(position));
-                }
-                @Override
-                public void onNothingSelected(AdapterView<?> parent) {}
-            });
+        btnImportStudents.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("*/*");
+            csvStudentsPickerLauncher.launch(intent);
         });
+
+        btnImportTeachers.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("*/*");
+            csvTeachersPickerLauncher.launch(intent);
+        });
+
+        tvSelectSubjects.setOnClickListener(v -> showSubjectsDialog());
+
+        btnQuickAddSchool.setOnClickListener(v -> showQuickAddSchoolDialog());
+
+        btnQuickAddSubject.setOnClickListener(v -> showQuickAddSubjectDialog());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (currentAdminType == 3) {
+            loadSchoolsForSuperAdmin();
+        }
+        loadAllSubjectsForTeacher();
+
+        if (spinnerRole.getSelectedItemPosition() == 1) {
+            loadStudentClasses();
+        }
     }
 
     private void setupRoleSpinner() {
-        String[] roles = {"Student", "Teacher", "School Admin", "Schooly Admin"};
-        spinnerRole.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, roles));
+        String[] roles = {"Select Role...", "Student", "Teacher"};
+        ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, roles);
+        spinnerRole.setAdapter(roleAdapter);
+
         spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (position == 0) {
-                    layoutStudentFields.setVisibility(View.VISIBLE);
-                    layoutTeacherFields.setVisibility(View.GONE);
-                    checkAdminSchoolStatus();
-                } else if (position == 1 || position == 2) {
-                    layoutStudentFields.setVisibility(View.GONE);
-                    layoutTeacherFields.setVisibility(View.VISIBLE);
-                    checkAdminSchoolStatus();
-                    layoutTeacherFields.requestLayout();
-                } else if (position == 3) {
-                    layoutStudentFields.setVisibility(View.GONE);
-                    layoutTeacherFields.setVisibility(View.GONE);
-                    setSchoolLayoutVisibility(View.GONE, View.GONE, View.GONE);
+                if (position == 1) { // Student
+                    layoutStudentGroups.setVisibility(View.VISIBLE);
+                    layoutTeacherSubjects.setVisibility(View.GONE);
+                    loadStudentClasses();
+                } else if (position == 2) { // Teacher
+                    layoutTeacherSubjects.setVisibility(View.VISIBLE);
+                    layoutStudentGroups.setVisibility(View.GONE);
+                } else {
+                    layoutStudentGroups.setVisibility(View.GONE);
+                    layoutTeacherSubjects.setVisibility(View.GONE);
                 }
             }
+
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
     }
 
-    private void showQuickAddSchoolDialog() {
-        final EditText etInput = new EditText(this);
-        etInput.setHint("School Name (e.g., Ironi Alef)");
-        etInput.setPadding(40, 32, 40, 32);
-        new AlertDialog.Builder(this)
-                .setTitle("Quick Add New School")
-                .setMessage("Enter the name of the new school:")
-                .setView(etInput)
-                .setPositiveButton("Save", (dialog, which) -> {
-                    String schoolName = etInput.getText().toString().trim();
-                    if (!schoolName.isEmpty()) {
-                        saveSchoolToFirestoreQuickly(schoolName);
+    private void setupSchoolLogic() {
+        if (currentAdminType == 3) {
+            tvSchoolTitle.setVisibility(View.VISIBLE);
+            spinnerSchoolSelect.setVisibility(View.VISIBLE);
+            btnQuickAddSchool.setVisibility(View.VISIBLE);
+            viewSchoolDivider.setVisibility(View.VISIBLE);
+            loadSchoolsForSuperAdmin();
+
+            spinnerSchoolSelect.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (position > 0) {
+                        selectedSchoolRef = db.collection("schools").document(schoolIds.get(position));
+                        if (spinnerRole.getSelectedItemPosition() == 1) {
+                            loadStudentClasses();
+                        }
                     } else {
-                        Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+                        selectedSchoolRef = null;
+                        clearStudentSpinners();
                     }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
+                }
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        } else if (currentAdminType == 2) {
+            tvSchoolTitle.setVisibility(View.VISIBLE);
+            etSchoolLocked.setVisibility(View.VISIBLE);
+            viewSchoolDivider.setVisibility(View.VISIBLE);
 
-    private void saveSchoolToFirestoreQuickly(String schoolName) {
-        Map<String, Object> schoolData = new HashMap<>();
-        schoolData.put("displayName", schoolName);
-
-        db.collection("schools")
-                .add(schoolData)
-                .addOnSuccessListener(documentReference -> {
-                    Toast.makeText(this, schoolName + " School Added! 🏫", Toast.LENGTH_SHORT).show();
-                    loadAllSchoolsForSchoolyAdmin();
-                })
-                .addOnFailureListener(e -> Toast.makeText(this, "Failed to add school: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
-
-    private void loadSubjectsFromFirestore() {
-        db.collection("classes");
-        db.collection("subjects").get().addOnSuccessListener(queryDocumentSnapshots -> {
-            subjectNames.clear();
-            subjectIds.clear();
-            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                subjectIds.add(doc.getId());
-                String name = doc.contains("displayName") ? doc.getString("displayName") : doc.getId();
-                subjectNames.add(name);
+            if (!TextUtils.isEmpty(currentSchoolId)) {
+                selectedSchoolRef = db.collection("schools").document(currentSchoolId);
+                selectedSchoolRef.get().addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        etSchoolLocked.setText(doc.getString("displayName"));
+                    }
+                });
+            } else {
+                Toast.makeText(this, "Error: Admin is not assigned to a school.", Toast.LENGTH_LONG).show();
+                btnSaveUser.setEnabled(false);
             }
-            checkedSubjectsArray = new boolean[subjectNames.size()];
-            updateSubjectsTextView();
-        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load subjects", Toast.LENGTH_SHORT).show());
+        }
     }
 
-    private void showSubjectsMultiChoiceDialog() {
-        if (subjectNames.isEmpty()) {
-            Toast.makeText(this, "No subjects available. Add one first!", Toast.LENGTH_SHORT).show();
+    private void loadSchoolsForSuperAdmin() {
+        String currentSelectionId = null;
+        if (spinnerSchoolSelect.getSelectedItemPosition() > 0 && schoolIds.size() > spinnerSchoolSelect.getSelectedItemPosition()) {
+            currentSelectionId = schoolIds.get(spinnerSchoolSelect.getSelectedItemPosition());
+        }
+
+        final String finalCurrentSelectionId = currentSelectionId;
+
+        db.collection("schools").orderBy("displayName", Query.Direction.ASCENDING).get().addOnSuccessListener(snapshots -> {
+            schoolNames.clear();
+            schoolIds.clear();
+            schoolNames.add("Select School...");
+            schoolIds.add("");
+
+            int newPosition = 0;
+            int currentIndex = 1;
+
+            for (QueryDocumentSnapshot doc : snapshots) {
+                schoolIds.add(doc.getId());
+                schoolNames.add(doc.getString("displayName") != null ? doc.getString("displayName") : doc.getId());
+
+                if (finalCurrentSelectionId != null && finalCurrentSelectionId.equals(doc.getId())) {
+                    newPosition = currentIndex;
+                }
+                currentIndex++;
+            }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, schoolNames);
+            spinnerSchoolSelect.setAdapter(adapter);
+
+            if (newPosition > 0) {
+                spinnerSchoolSelect.setSelection(newPosition);
+            }
+        });
+    }
+
+    private DocumentReference getSelectedSchoolRef() {
+        if (currentAdminType == 3) {
+            int pos = spinnerSchoolSelect.getSelectedItemPosition();
+            if (pos > 0) {
+                return db.collection("schools").document(schoolIds.get(pos));
+            }
+            return null;
+        } else {
+            return selectedSchoolRef;
+        }
+    }
+
+    private void loadStudentClasses() {
+        DocumentReference schoolRef = getSelectedSchoolRef();
+        if (schoolRef == null) {
+            clearStudentSpinners();
             return;
         }
-        String[] items = subjectNames.toArray(new String[0]);
+
+        db.collection("classes").whereEqualTo("school", schoolRef).get()
+                .addOnSuccessListener(snapshots -> {
+                    clearClassLists();
+
+                    for (QueryDocumentSnapshot doc : snapshots) {
+                        String type = doc.getString("type");
+                        String name = doc.getString("displayName");
+                        String id = doc.getId();
+
+                        if (type != null && name != null) {
+                            switch (type.toLowerCase()) {
+                                case "homeroom": homeroomNames.add(name); homeroomIds.add(id); break;
+                                case "math": mathNames.add(name); mathIds.add(id); break;
+                                case "english": englishNames.add(name); englishIds.add(id); break;
+                                case "sports": peNames.add(name); peIds.add(id); break;
+                                case "major a": majorANames.add(name); majorAIds.add(id); break;
+                                case "major b": majorBNames.add(name); majorBIds.add(id); break;
+                            }
+                        }
+                    }
+                    updateClassSpinners();
+                });
+    }
+
+    private void clearClassLists() {
+        homeroomNames.clear(); homeroomIds.clear(); homeroomNames.add("None"); homeroomIds.add("");
+        mathNames.clear(); mathIds.clear(); mathNames.add("None"); mathIds.add("");
+        englishNames.clear(); englishIds.clear(); englishNames.add("None"); englishIds.add("");
+        peNames.clear(); peIds.clear(); peNames.add("None"); peIds.add("");
+        majorANames.clear(); majorAIds.clear(); majorANames.add("None (Optional)"); majorAIds.add("");
+        majorBNames.clear(); majorBIds.clear(); majorBNames.add("None (Optional)"); majorBIds.add("");
+    }
+
+    private void updateClassSpinners() {
+        spinnerHomeroom.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, homeroomNames));
+        spinnerMathGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathNames));
+        spinnerEnglishGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishNames));
+        spinnerPeGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, peNames));
+        spinnerMajorAGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorANames));
+        spinnerMajorBGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorBNames));
+    }
+
+    private void clearStudentSpinners() {
+        clearClassLists();
+        updateClassSpinners();
+    }
+
+    private void loadAllSubjectsForTeacher() {
+        db.collection("subjects").orderBy("displayName", Query.Direction.ASCENDING).get().addOnSuccessListener(snapshots -> {
+            int size = snapshots.size();
+            allSubjectNames = new String[size];
+            allSubjectIds = new String[size];
+            checkedSubjectsArray = new boolean[size];
+
+            int i = 0;
+            for (QueryDocumentSnapshot doc : snapshots) {
+                allSubjectIds[i] = doc.getId();
+                allSubjectNames[i] = doc.getString("displayName");
+                if (chosenSubjectIds.contains(doc.getId())) {
+                    checkedSubjectsArray[i] = true;
+                }
+                i++;
+            }
+            updateSubjectsTextView();
+        });
+    }
+
+    private void showSubjectsDialog() {
+        if (allSubjectNames == null || allSubjectNames.length == 0) {
+            Toast.makeText(this, "No subjects found in database.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Select Teachable Subjects");
-        builder.setCancelable(false);
-        builder.setMultiChoiceItems(items, checkedSubjectsArray, (dialog, which, isChecked) -> checkedSubjectsArray[which] = isChecked);
+        builder.setTitle("Select Subjects");
+        builder.setMultiChoiceItems(allSubjectNames, checkedSubjectsArray, (dialog, which, isChecked) -> {
+            checkedSubjectsArray[which] = isChecked;
+        });
+
         builder.setPositiveButton("OK", (dialog, which) -> {
             chosenSubjectIds.clear();
             for (int i = 0; i < checkedSubjectsArray.length; i++) {
                 if (checkedSubjectsArray[i]) {
-                    chosenSubjectIds.add(subjectIds.get(i));
+                    chosenSubjectIds.add(allSubjectIds[i]);
                 }
             }
             updateSubjectsTextView();
         });
+
         builder.setNegativeButton("Cancel", null);
         builder.show();
     }
 
     private void updateSubjectsTextView() {
-        layoutSelectedSubjectsList.removeAllViews();
         if (chosenSubjectIds.isEmpty()) {
-            tvSelectSubjects.setText("Select Teachable Subjects *");
-            tvSelectSubjects.setTextColor(android.graphics.Color.parseColor("#666666"));
+            tvSelectSubjects.setText("Select Subjects...");
+            layoutSelectedSubjectsList.removeAllViews();
         } else {
-            tvSelectSubjects.setText(chosenSubjectIds.size() + " Subjects Selected:");
-            tvSelectSubjects.setTextColor(android.graphics.Color.parseColor("#1A237E"));
-            for (int i = 0; i < checkedSubjectsArray.length; i++) {
+            tvSelectSubjects.setText(chosenSubjectIds.size() + " subjects selected");
+            layoutSelectedSubjectsList.removeAllViews();
+
+            for (int i = 0; i < allSubjectIds.length; i++) {
                 if (checkedSubjectsArray[i]) {
-                    String currentSubjectName = subjectNames.get(i);
-                    TextView tvSubjectRow = new TextView(this);
-                    tvSubjectRow.setText("• " + currentSubjectName);
-                    tvSubjectRow.setTextSize(16.0f);
-                    tvSubjectRow.setTextColor(android.graphics.Color.parseColor("#333333"));
-                    tvSubjectRow.setPadding(0, 8, 0, 8);
-                    layoutSelectedSubjectsList.addView(tvSubjectRow);
+                    TextView tv = new TextView(this);
+                    tv.setText("• " + allSubjectNames[i]);
+                    tv.setTextColor(getResources().getColor(android.R.color.black));
+                    tv.setTextSize(14f);
+                    tv.setPadding(0, 4, 0, 4);
+                    layoutSelectedSubjectsList.addView(tv);
                 }
             }
         }
     }
 
-    private void loadClassesFromFirestore() {
-        Query classesQuery;
-        if (currentAdminType == 2 && selectedSchool != null) {
-            classesQuery = db.collection("classes").whereEqualTo("school", selectedSchool);
-        } else {
-            classesQuery = db.collection("classes");
-        }
+    private void showQuickAddSchoolDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Quick Add School");
 
-        classesQuery.get().addOnSuccessListener(queryDocumentSnapshots -> {
-            // אתחול כל הרשימות עם הפלייסהולדרים המתאימים
-            initListWithPlaceholder(homeroomNames, homeroomIds, "Select Homeroom Class *");
-            initListWithPlaceholder(mathNames, mathIds, "Select Math Group *");
-            initListWithPlaceholder(englishNames, englishIds, "Select English Group *");
-            initListWithPlaceholder(peNames, peIds, "Select Physical Education Group *");
-            initListWithPlaceholder(majorANames, majorAIds, "Select Major 1 Group (Optional)"); // ✨ פלייסנולדר מורחב א'
-            initListWithPlaceholder(majorBNames, majorBIds, "Select Major 2 Group (Optional)"); // ✨ פלייסנולדר מורחב ב'
+        final EditText input = new EditText(this);
+        input.setHint("Enter school name");
+        input.setPadding(40, 40, 40, 40);
+        builder.setView(input);
 
-            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                String classId = doc.getId();
-                String className = doc.contains("displayName") ? doc.getString("displayName") : doc.getString("name");
-                String type = doc.getString("type");
-                if (type == null) continue;
+        builder.setPositiveButton("Add", (dialog, which) -> {
+            String newSchoolName = input.getText().toString().trim();
+            if (!newSchoolName.isEmpty()) {
+                Map<String, Object> schoolData = new HashMap<>();
+                schoolData.put("displayName", newSchoolName);
 
-                switch (type) {
-                    case "homeroom":
-                        homeroomNames.add(className); homeroomIds.add(classId);
-                        break;
-                    case "math":
-                        mathNames.add(className); mathIds.add(classId);
-                        break;
-                    case "english":
-                        englishNames.add(className); englishIds.add(classId);
-                        break;
-                    case "pe":
-                        peNames.add(className); peIds.add(classId);
-                        break;
-                    case "major a": // ✨ פיצול למורחב א' מתוך ה-DB
-                        majorANames.add(className); majorAIds.add(classId);
-                        break;
-                    case "major b": // ✨ פיצול למורחב ב' מתוך ה-DB
-                        majorBNames.add(className); majorBIds.add(classId);
-                        break;
-                }
+                db.collection("schools").add(schoolData).addOnSuccessListener(documentReference -> {
+                    Toast.makeText(this, "School added successfully!", Toast.LENGTH_SHORT).show();
+                    loadSchoolsForSuperAdmin(); // רענון הספינר של בתי הספר
+                }).addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error adding school.", Toast.LENGTH_SHORT).show();
+                });
+            } else {
+                Toast.makeText(this, "School name cannot be empty", Toast.LENGTH_SHORT).show();
             }
+        });
 
-            // הצמדת האדפטרים המעודכנים והנפרדים לכל ספינר
-            spinnerHomeroom.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, homeroomNames));
-            spinnerMathGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathNames));
-            spinnerEnglishGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishNames));
-            spinnerPeGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, peNames));
-
-            // ✨ כל ספינר מקבל עכשיו את הרשימה הייעודית שלו
-            spinnerMajorAGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorANames));
-            spinnerMajorBGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorBNames));
-
-        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load classes", Toast.LENGTH_SHORT).show());
-    }
-
-    private void initListWithPlaceholder(ArrayList<String> names, ArrayList<String> ids, String placeholder) {
-        names.clear(); ids.clear();
-        names.add(placeholder); ids.add("");
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+        builder.show();
     }
 
     private void showQuickAddSubjectDialog() {
-        final EditText etInput = new EditText(this);
-        etInput.setHint("Subject Name (e.g., English 5)");
-        etInput.setPadding(40, 32, 40, 32);
-        new AlertDialog.Builder(this)
-                .setTitle("Quick Add New Subject")
-                .setMessage("Enter the name of the new subject:")
-                .setView(etInput)
-                .setPositiveButton("Save", (dialog, which) -> {
-                    String subjectName = etInput.getText().toString().trim();
-                    if (!subjectName.isEmpty()) {
-                        saveSubjectToFirestoreQuickly(subjectName);
-                    } else {
-                        Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Quick Add Subject");
+
+        final EditText input = new EditText(this);
+        input.setHint("Enter subject name");
+        input.setPadding(40, 40, 40, 40);
+        builder.setView(input);
+
+        builder.setPositiveButton("Add", (dialog, which) -> {
+            String newSubjectName = input.getText().toString().trim();
+            if (!newSubjectName.isEmpty()) {
+                Map<String, Object> subjectData = new HashMap<>();
+                subjectData.put("displayName", newSubjectName);
+
+                db.collection("subjects").add(subjectData).addOnSuccessListener(documentReference -> {
+                    Toast.makeText(this, "Subject added successfully!", Toast.LENGTH_SHORT).show();
+                    loadAllSubjectsForTeacher(); // רענון רשימת המקצועות לבחירה
+                }).addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error adding subject.", Toast.LENGTH_SHORT).show();
+                });
+            } else {
+                Toast.makeText(this, "Subject name cannot be empty", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+        builder.show();
     }
 
-    private void saveSubjectToFirestoreQuickly(String subjectName) {
-        String documentId = subjectName.toLowerCase().replace(" ", "-");
-        Map<String, Object> subjectData = new HashMap<>();
-        subjectData.put("displayName", subjectName);
-
-        db.collection("subjects").document(documentId)
-                .set(subjectData)
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, subjectName + " Added! 🎉", Toast.LENGTH_SHORT).show();
-                    subjectNames.add(subjectName);
-                    subjectIds.add(documentId);
-                    boolean[] newCheckedArray = new boolean[subjectNames.size()];
-                    System.arraycopy(checkedSubjectsArray, 0, newCheckedArray, 0, checkedSubjectsArray.length);
-                    newCheckedArray[newCheckedArray.length - 1] = true;
-                    checkedSubjectsArray = newCheckedArray;
-                    chosenSubjectIds.add(documentId);
-                    updateSubjectsTextView();
-                }).addOnFailureListener(e -> Toast.makeText(this, "Failed to add subject: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-    }
-
-    private void saveUserToDatabase() {
+    private void saveUser() {
         String tz = etTz.getText().toString().trim();
         String firstName = etFirstName.getText().toString().trim();
         String lastName = etLastName.getText().toString().trim();
         String middleName = etMiddleName.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-        int type = spinnerRole.getSelectedItemPosition();
+        String password = etPassword.getText().toString();
+        int rolePos = spinnerRole.getSelectedItemPosition();
 
         if (TextUtils.isEmpty(tz) || TextUtils.isEmpty(firstName) || TextUtils.isEmpty(lastName) ||
-                TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
-            Toast.makeText(this, "Please fill all mandatory fields (*)", Toast.LENGTH_SHORT).show();
+                TextUtils.isEmpty(email) || TextUtils.isEmpty(password) || rolePos == 0) {
+            Toast.makeText(this, "Please fill all mandatory fields and select role.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (!isValidIsraeliID(tz) || !isValidEmail(email)) {
-            Toast.makeText(this, "Please check ID or Email format", Toast.LENGTH_SHORT).show();
+        if (!isValidIsraeliID(tz)) {
+            Toast.makeText(this, "Invalid ID (TZ) number.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (type != 3 && selectedSchool == null) {
-            Toast.makeText(this, "Error: No school assigned to this user!", Toast.LENGTH_SHORT).show();
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            Toast.makeText(this, "Invalid email address.", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        Map<String, DocumentReference> studentClassesMap = new HashMap<>();
-        ArrayList<DocumentReference> teacherSubjectRefs = new ArrayList<>();
+        if (password.length() < 6) {
+            Toast.makeText(this, "Password must be at least 6 characters.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        if (type == 0) { // תלמיד
-            // וידוא שכל מקצועות החובה נבחרו כולל PE
-            if (spinnerHomeroom.getSelectedItemPosition() == 0 ||
-                    spinnerMathGroup.getSelectedItemPosition() == 0 ||
-                    spinnerEnglishGroup.getSelectedItemPosition() == 0 ||
-                    spinnerPeGroup.getSelectedItemPosition() == 0) {
-                Toast.makeText(this, "Please select Homeroom, Math, English, and Physical Education groups!", Toast.LENGTH_LONG).show();
+        DocumentReference schoolRef = getSelectedSchoolRef();
+        if (schoolRef == null) {
+            Toast.makeText(this, "Please select a school.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        db.collection("users").whereEqualTo("tz", tz).get().addOnSuccessListener(snapshots -> {
+            if (!snapshots.isEmpty()) {
+                Toast.makeText(this, "User with this ID already exists!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // שמירת מקצועות החובה למפה
-            studentClassesMap.put("homeroom", db.collection("classes").document(homeroomIds.get(spinnerHomeroom.getSelectedItemPosition())));
-            studentClassesMap.put("math", db.collection("classes").document(mathIds.get(spinnerMathGroup.getSelectedItemPosition())));
-            studentClassesMap.put("english", db.collection("classes").document(englishIds.get(spinnerEnglishGroup.getSelectedItemPosition())));
-            studentClassesMap.put("pe", db.collection("classes").document(peIds.get(spinnerPeGroup.getSelectedItemPosition())));
-
-            // ✨ שמירת מורחב א' (major a) מתוך רשימת ה-IDs הייעודית שלו
-            if (spinnerMajorAGroup.getSelectedItemPosition() > 0) {
-                studentClassesMap.put("major a", db.collection("classes").document(majorAIds.get(spinnerMajorAGroup.getSelectedItemPosition())));
-            } else {
-                studentClassesMap.put("major a", null);
-            }
-
-            // ✨ שמירת מורחב ב' (major b) מתוך רשימת ה-IDs הייעודית שלו
-            if (spinnerMajorBGroup.getSelectedItemPosition() > 0) {
-                studentClassesMap.put("major b", db.collection("classes").document(majorBIds.get(spinnerMajorBGroup.getSelectedItemPosition())));
-            } else {
-                studentClassesMap.put("major b", null);
-            }
-
-        } else if (type == 1 || type == 2) {
-            if (chosenSubjectIds.isEmpty()) {
-                Toast.makeText(this, "Please select at least one teachable subject!", Toast.LENGTH_LONG).show();
-                return;
-            }
-            for (String subId : chosenSubjectIds) {
-                teacherSubjectRefs.add(db.collection("subjects").document(subId));
-            }
-        }
-
-        db.collection("users").document(tz).get().addOnSuccessListener(documentSnapshot -> {
-            if (documentSnapshot.exists()) {
-                etTz.setError("User already exists!");
-                new AlertDialog.Builder(this)
-                        .setTitle("שגיאה ביצירת משתמש 🚫")
-                        .setMessage("תעודת הזהות שהזנת (" + tz + ") כבר קיימת במערכת.")
-                        .setPositiveButton("הבנתי", null)
-                        .show();
-            } else {
-                String fullName = firstName + (middleName.isEmpty() ? "" : " " + middleName) + " " + lastName;
-
-                Map<String, Object> userMap = new HashMap<>();
-                userMap.put("email", email);
-                userMap.put("password", password);
-                userMap.put("type", type);
-                userMap.put("name", fullName);
-                userMap.put("firstName", firstName);
-                userMap.put("lastName", lastName);
-
-                if (type != 3) {
-                    userMap.put("school", selectedSchool);
+            db.collection("users").whereEqualTo("email", email).get().addOnSuccessListener(emailSnaps -> {
+                if (!emailSnaps.isEmpty()) {
+                    Toast.makeText(this, "User with this email already exists!", Toast.LENGTH_SHORT).show();
+                    return;
                 }
 
-                if (type == 0) {
-                    userMap.put("classes", studentClassesMap);
-                } else if (type == 1 || type == 2) {
-                    userMap.put("teachableSubjects", teacherSubjectRefs);
+                Map<String, Object> userData = new HashMap<>();
+                userData.put("tz", tz);
+                userData.put("firstName", firstName);
+                userData.put("lastName", lastName);
+                if (!middleName.isEmpty()) userData.put("middleName", middleName);
+                userData.put("email", email);
+                userData.put("password", password);
+                userData.put("school", schoolRef);
+
+                if (rolePos == 1) { // Student
+                    userData.put("type", 0);
+
+                    int hrPos = spinnerHomeroom.getSelectedItemPosition();
+                    int mathPos = spinnerMathGroup.getSelectedItemPosition();
+                    int engPos = spinnerEnglishGroup.getSelectedItemPosition();
+                    int pePos = spinnerPeGroup.getSelectedItemPosition();
+
+                    if (hrPos == 0 || mathPos == 0 || engPos == 0 || pePos == 0) {
+                        Toast.makeText(this, "Homeroom, Math, English and PE groups are mandatory for students.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    Map<String, DocumentReference> classesMap = new HashMap<>();
+                    classesMap.put("homeroom", db.collection("classes").document(homeroomIds.get(hrPos)));
+                    classesMap.put("math", db.collection("classes").document(mathIds.get(mathPos)));
+                    classesMap.put("english", db.collection("classes").document(englishIds.get(engPos)));
+                    classesMap.put("sports", db.collection("classes").document(peIds.get(pePos)));
+
+                    int majorAPos = spinnerMajorAGroup.getSelectedItemPosition();
+                    if (majorAPos > 0) {
+                        classesMap.put("major a", db.collection("classes").document(majorAIds.get(majorAPos)));
+                    }
+
+                    int majorBPos = spinnerMajorBGroup.getSelectedItemPosition();
+                    if (majorBPos > 0) {
+                        classesMap.put("major b", db.collection("classes").document(majorBIds.get(majorBPos)));
+                    }
+
+                    userData.put("classes", classesMap);
+
+                } else if (rolePos == 2) { // Teacher
+                    userData.put("type", 1);
+                    ArrayList<DocumentReference> subjectsRefs = new ArrayList<>();
+                    for (String sid : chosenSubjectIds) {
+                        subjectsRefs.add(db.collection("subjects").document(sid));
+                    }
+                    userData.put("teachableSubjects", subjectsRefs);
                 }
 
-                db.collection("users").document(tz).set(userMap).addOnSuccessListener(aVoid -> {
-                    Toast.makeText(AddUserActivity.this, "User saved successfully! ✅", Toast.LENGTH_SHORT).show();
-                    clearForm();
+                db.collection("users").add(userData).addOnSuccessListener(docRef -> {
+                    Toast.makeText(this, "User created successfully!", Toast.LENGTH_SHORT).show();
+                    clearFields();
+                }).addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error creating user: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-            }
+
+            });
         });
     }
 
-    private void clearForm() {
-        // איפוס שדות הטקסט
+    private void clearFields() {
         etTz.setText("");
         etFirstName.setText("");
         etLastName.setText("");
         etMiddleName.setText("");
         etEmail.setText("");
         etPassword.setText("");
-
-        // איפוס בחירת התפקיד
         spinnerRole.setSelection(0);
-
-        // איפוס קבוצות הלימוד של החובה
         spinnerHomeroom.setSelection(0);
         spinnerMathGroup.setSelection(0);
         spinnerEnglishGroup.setSelection(0);
-        spinnerPeGroup.setSelection(0); // ✨ איפוס ספינר PE (חינוך גופני)
-
-        // איפוס קבוצות הלימוד של המורחבים (מפוצל לפי מורחב א' ומורחב ב')
+        spinnerPeGroup.setSelection(0);
         spinnerMajorAGroup.setSelection(0);
         spinnerMajorBGroup.setSelection(0);
 
-        // ניקוי ואיפוס המקצועות שניתן ללמד (עבור מורים)
         chosenSubjectIds.clear();
         if (checkedSubjectsArray != null) {
             for (int i = 0; i < checkedSubjectsArray.length; i++) {
@@ -568,13 +632,172 @@ public class AddUserActivity extends BaseMenuActivity {
         for (int i = 0; i < 9; i++) {
             int digit = id.charAt(i) - '0';
             int step = digit * ((i % 2) + 1);
-            if (step > 9) step -= 9;
-            sum += step;
+            sum += (step > 9) ? (step - 9) : step;
         }
         return sum % 10 == 0;
     }
 
-    private boolean isValidEmail(String email) {
-        return email != null && Patterns.EMAIL_ADDRESS.matcher(email).matches();
+    // ==========================================
+    // קוד הייבוא מ-CSV
+    // ==========================================
+
+    private void processStudentsCsvFile(Uri uri) {
+        DocumentReference selectedSchool = getSelectedSchoolRef();
+        if (selectedSchool == null) {
+            Toast.makeText(this, "Please select a school first!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // שלב 1: Pre-fetch למילון הכיתות
+        db.collection("classes").whereEqualTo("school", selectedSchool).get().addOnSuccessListener(snapshots -> {
+            Map<String, DocumentReference> classDict = new HashMap<>();
+            for (QueryDocumentSnapshot doc : snapshots) {
+                String className = doc.getString("displayName");
+                if (className != null) {
+                    classDict.put(className.trim(), doc.getReference());
+                }
+            }
+
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(uri);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                String line;
+                WriteBatch batch = db.batch();
+                int count = 0;
+                boolean isFirstRow = true;
+
+                while ((line = reader.readLine()) != null) {
+                    if (isFirstRow && line.toLowerCase().contains("email")) {
+                        isFirstRow = false;
+                        continue;
+                    }
+                    isFirstRow = false;
+
+                    String[] columns = line.split(",");
+                    if (columns.length >= 11) {
+                        String tz = columns[0].trim();
+                        String firstName = columns[1].trim();
+                        String lastName = columns[2].trim();
+                        String email = columns[3].trim();
+                        String password = columns[4].trim();
+                        String middleName = columns[5].trim();
+
+                        String homeroom = columns[6].trim();
+                        String math = columns[7].trim();
+                        String english = columns[8].trim();
+                        String sports = columns[9].trim();
+                        String majorA = columns[10].trim();
+                        String majorB = columns.length >= 12 ? columns[11].trim() : "";
+
+                        Map<String, Object> userData = new HashMap<>();
+                        userData.put("tz", tz);
+                        userData.put("firstName", firstName);
+                        userData.put("lastName", lastName);
+                        if (!middleName.isEmpty()) userData.put("middleName", middleName);
+                        userData.put("email", email);
+                        userData.put("password", password);
+                        userData.put("type", 0);
+                        userData.put("school", selectedSchool);
+
+                        // המרה לרפרנסים לפי המילון שהורדנו
+                        Map<String, DocumentReference> classesMap = new HashMap<>();
+                        if (classDict.containsKey(homeroom)) classesMap.put("homeroom", classDict.get(homeroom));
+                        if (classDict.containsKey(math)) classesMap.put("math", classDict.get(math));
+                        if (classDict.containsKey(english)) classesMap.put("english", classDict.get(english));
+                        if (classDict.containsKey(sports)) classesMap.put("sports", classDict.get(sports));
+                        if (classDict.containsKey(majorA)) classesMap.put("major a", classDict.get(majorA));
+                        if (classDict.containsKey(majorB)) classesMap.put("major b", classDict.get(majorB));
+
+                        userData.put("classes", classesMap);
+
+                        DocumentReference newUserRef = db.collection("users").document();
+                        batch.set(newUserRef, userData);
+                        count++;
+                    }
+                }
+                reader.close();
+
+                if (count > 0) {
+                    final int finalCount = count;
+                    batch.commit().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Successfully imported " + finalCount + " students! 🎉", Toast.LENGTH_LONG).show();
+                    }).addOnFailureListener(e -> {
+                        Toast.makeText(this, "Failed to import students: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    });
+                } else {
+                    Toast.makeText(this, "No valid students found in CSV.", Toast.LENGTH_SHORT).show();
+                }
+
+            } catch (Exception e) {
+                Toast.makeText(this, "Error reading students CSV file.", Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void processTeachersCsvFile(Uri uri) {
+        DocumentReference selectedSchool = getSelectedSchoolRef();
+        if (selectedSchool == null) {
+            Toast.makeText(this, "Please select a school first!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            String line;
+            WriteBatch batch = db.batch();
+            int count = 0;
+            boolean isFirstRow = true;
+
+            while ((line = reader.readLine()) != null) {
+                if (isFirstRow && line.toLowerCase().contains("email")) {
+                    isFirstRow = false;
+                    continue;
+                }
+                isFirstRow = false;
+
+                String[] columns = line.split(",");
+                if (columns.length >= 5) {
+                    String tz = columns[0].trim();
+                    String firstName = columns[1].trim();
+                    String lastName = columns[2].trim();
+                    String email = columns[3].trim();
+                    String password = columns[4].trim();
+                    String middleName = columns.length >= 6 ? columns[5].trim() : "";
+
+                    Map<String, Object> userData = new HashMap<>();
+                    userData.put("tz", tz);
+                    userData.put("firstName", firstName);
+                    userData.put("lastName", lastName);
+                    if (!middleName.isEmpty()) userData.put("middleName", middleName);
+                    userData.put("email", email);
+                    userData.put("password", password);
+                    userData.put("type", 1);
+                    userData.put("school", selectedSchool);
+                    userData.put("teachableSubjects", new ArrayList<>()); // ריק
+
+                    DocumentReference newUserRef = db.collection("users").document();
+                    batch.set(newUserRef, userData);
+                    count++;
+                }
+            }
+            reader.close();
+
+            if (count > 0) {
+                final int finalCount = count;
+                batch.commit().addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Successfully imported " + finalCount + " teachers! 🎉", Toast.LENGTH_LONG).show();
+                }).addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to import teachers: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            } else {
+                Toast.makeText(this, "No valid teachers found in CSV.", Toast.LENGTH_SHORT).show();
+            }
+
+        } catch (Exception e) {
+            Toast.makeText(this, "Error reading teachers CSV file.", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
     }
 }

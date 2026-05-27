@@ -29,6 +29,43 @@
             android:layout_marginBottom="20dp"/>
 
         <TextView
+            android:id="@+id/tvSchoolTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select School:"
+            android:textStyle="bold"
+            android:layout_marginBottom="5dp"
+            android:textColor="#333333"
+            android:visibility="gone"/>
+
+        <Spinner
+            android:id="@+id/spinnerSchoolSelect"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="#EEEEEE"
+            android:layout_marginBottom="15dp"
+            android:visibility="gone"/>
+
+        <EditText
+            android:id="@+id/etSchoolLocked"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:padding="10dp"
+            android:background="#EEEEEE"
+            android:enabled="false"
+            android:textColor="#333333"
+            android:visibility="gone"
+            android:layout_marginBottom="15dp"/>
+
+        <View
+            android:id="@+id/viewSchoolDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#CCCCCC"
+            android:visibility="gone"
+            android:layout_marginBottom="15dp"/>
+
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Group Name:"
@@ -40,15 +77,15 @@
             android:id="@+id/etClassName"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:hint="e.g. 11-A, Math 5u *"
+            android:hint="e.g. 10th Grade Math - 5 Units"
+            android:paddingStart="15dp"
             android:background="#EEEEEE"
-            android:padding="10dp"
             android:layout_marginBottom="15dp"/>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Select Group Type:"
+            android:text="Group Type:"
             android:textStyle="bold"
             android:layout_marginBottom="5dp"
             android:textColor="#333333"/>
@@ -58,42 +95,6 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:background="#EEEEEE"
-            android:layout_marginBottom="15dp"/>
-
-        <TextView
-            android:id="@+id/tvSchoolTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="School Assignment:"
-            android:textStyle="bold"
-            android:layout_marginBottom="5dp"
-            android:textColor="#333333"/>
-
-        <EditText
-            android:id="@+id/etSchoolLocked"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#E0E0E0"
-            android:focusable="false"
-            android:clickable="false"
-            android:padding="10dp"
-            android:textColor="#555555"
-            android:visibility="gone"
-            android:layout_marginBottom="15dp"/>
-
-        <Spinner
-            android:id="@+id/spinnerSchoolSelect"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#EEEEEE"
-            android:visibility="gone"
-            android:layout_marginBottom="15dp"/>
-
-        <View
-            android:id="@+id/viewSchoolDivider"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#CCCCCC"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="20dp"/>
 
@@ -132,7 +133,43 @@
             android:text="Create Group ✅"
             android:textSize="18sp"
             android:backgroundTint="#005088"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="30dp"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#DDDDDD"
+            android:layout_marginBottom="20dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bulk Import (CSV)"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#FF9800"
+            android:gravity="center"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Upload a CSV file with 2 columns:\nColumn 1: Group Name\nColumn 2: Type (homeroom/math/english/sports/major a/major b)"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:gravity="center"
+            android:layout_marginBottom="15dp"/>
+
+        <Button
+            android:id="@+id/btnImportCsv"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Select CSV File 📂"
+            android:textSize="18sp"
+            android:backgroundTint="#FF9800"
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="10dp"/>
 
     </LinearLayout>
 </ScrollView>

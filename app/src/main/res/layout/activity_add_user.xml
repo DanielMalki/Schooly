@@ -36,42 +36,30 @@
             android:id="@+id/spinnerRole"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:layout_marginBottom="20dp"
-            android:background="#EEEEEE"/>
+            android:background="#EEEEEE"
+            android:layout_marginBottom="15dp"/>
 
         <TextView
             android:id="@+id/tvSchoolTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="School Assignment:"
+            android:text="Select School:"
             android:textStyle="bold"
             android:layout_marginBottom="5dp"
-            android:textColor="#333333"/>
-
-        <EditText
-            android:id="@+id/etSchoolLocked"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#E0E0E0"
-            android:focusable="false"
-            android:clickable="false"
-            android:padding="10dp"
-            android:textColor="#555555"
-            android:visibility="gone"
-            android:layout_marginBottom="20dp"/>
+            android:textColor="#333333"
+            android:visibility="gone"/>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="20dp">
+            android:layout_marginBottom="15dp">
 
             <Spinner
                 android:id="@+id/spinnerSchoolSelect"
                 android:layout_width="0dp"
-                android:layout_weight="1"
                 android:layout_height="50dp"
+                android:layout_weight="1"
                 android:background="#EEEEEE"
                 android:visibility="gone"/>
 
@@ -83,63 +71,58 @@
                 android:src="@android:drawable/ic_input_add"
                 android:backgroundTint="#1A237E"
                 app:tint="@android:color/white"
+                android:background="@drawable/rounded_edittext_bg"
                 android:visibility="gone"
-                android:contentDescription="Quick add school" />
+                android:contentDescription="Quick add school"/>
         </LinearLayout>
+
+        <EditText
+            android:id="@+id/etSchoolLocked"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:padding="10dp"
+            android:background="#EEEEEE"
+            android:enabled="false"
+            android:textColor="#333333"
+            android:visibility="gone"
+            android:layout_marginBottom="15dp"/>
 
         <View
             android:id="@+id/viewSchoolDivider"
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:background="#CCCCCC"
-            android:layout_marginBottom="20dp"/>
+            android:visibility="gone"
+            android:layout_marginBottom="15dp"/>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="2. Personal Information:"
+            android:text="2. Personal Details:"
             android:textStyle="bold"
             android:layout_marginBottom="10dp"
             android:textColor="#333333"/>
 
         <EditText
-            android:id="@+id/etNewTz"
+            android:id="@+id/etTz"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:hint="ID Number (T.Z) *"
+            android:hint="ID Number (TZ)"
             android:inputType="number"
-            android:layout_marginBottom="15dp"
+            android:maxLength="9"
+            android:paddingStart="15dp"
             android:background="#EEEEEE"
-            android:padding="10dp"/>
+            android:layout_marginBottom="10dp"/>
 
-        <LinearLayout
+        <EditText
+            android:id="@+id/etFirstName"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="15dp">
-
-            <EditText
-                android:id="@+id/etFirstName"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="50dp"
-                android:hint="First Name *"
-                android:inputType="textPersonName"
-                android:background="#EEEEEE"
-                android:padding="10dp"
-                android:layout_marginEnd="5dp"/>
-
-            <EditText
-                android:id="@+id/etLastName"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="50dp"
-                android:hint="Last Name *"
-                android:inputType="textPersonName"
-                android:background="#EEEEEE"
-                android:padding="10dp"
-                android:layout_marginStart="5dp"/>
-        </LinearLayout>
+            android:layout_height="50dp"
+            android:hint="First Name"
+            android:inputType="textPersonName"
+            android:paddingStart="15dp"
+            android:background="#EEEEEE"
+            android:layout_marginBottom="10dp"/>
 
         <EditText
             android:id="@+id/etMiddleName"
@@ -147,32 +130,51 @@
             android:layout_height="50dp"
             android:hint="Middle Name (Optional)"
             android:inputType="textPersonName"
-            android:layout_marginBottom="15dp"
+            android:paddingStart="15dp"
             android:background="#EEEEEE"
-            android:padding="10dp"/>
+            android:layout_marginBottom="10dp"/>
 
         <EditText
-            android:id="@+id/etNewEmail"
+            android:id="@+id/etLastName"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:hint="Email Address *"
+            android:hint="Last Name"
+            android:inputType="textPersonName"
+            android:paddingStart="15dp"
+            android:background="#EEEEEE"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="3. Login Credentials:"
+            android:textStyle="bold"
+            android:layout_marginTop="5dp"
+            android:layout_marginBottom="10dp"
+            android:textColor="#333333"/>
+
+        <EditText
+            android:id="@+id/etEmail"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="Email Address"
             android:inputType="textEmailAddress"
-            android:layout_marginBottom="15dp"
+            android:paddingStart="15dp"
             android:background="#EEEEEE"
-            android:padding="10dp"/>
+            android:layout_marginBottom="10dp"/>
 
         <EditText
-            android:id="@+id/etNewPassword"
+            android:id="@+id/etPassword"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:hint="Password *"
+            android:hint="Password (min. 6 characters)"
             android:inputType="textPassword"
-            android:layout_marginBottom="15dp"
+            android:paddingStart="15dp"
             android:background="#EEEEEE"
-            android:padding="10dp"/>
+            android:layout_marginBottom="20dp"/>
 
         <LinearLayout
-            android:id="@+id/layoutStudentFields"
+            android:id="@+id/layoutStudentGroups"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -181,91 +183,57 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="3. Assign Student to Learning Groups:"
+                android:text="4. Learning Groups (Mandatory):"
                 android:textStyle="bold"
-                android:textColor="#FF5722"
-                android:layout_marginBottom="10dp"/>
+                android:layout_marginBottom="10dp"
+                android:textColor="#2E8B57"/>
+
+            <TextView android:text="Homeroom Class:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Spinner android:id="@+id/spinnerHomeroom" android:layout_width="match_parent" android:layout_height="45dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+            <TextView android:text="Math Group:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Spinner android:id="@+id/spinnerMathGroup" android:layout_width="match_parent" android:layout_height="45dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+            <TextView android:text="English Group:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Spinner android:id="@+id/spinnerEnglishGroup" android:layout_width="match_parent" android:layout_height="45dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+            <TextView android:text="Physical Education Group:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Spinner android:id="@+id/spinnerPeGroup" android:layout_width="match_parent" android:layout_height="45dp" android:background="#EEEEEE" android:layout_marginBottom="20dp"/>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Mandatory Classes (*)"
-                android:textSize="12sp"
-                android:textColor="#777777"
-                android:layout_marginBottom="4dp"/>
-
-            <Spinner
-                android:id="@+id/spinnerHomeroom"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
+                android:text="5. Major Subjects (Optional):"
+                android:textStyle="bold"
                 android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
+                android:textColor="#2E8B57"/>
 
-            <Spinner
-                android:id="@+id/spinnerMathGroup"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
+            <TextView android:text="Major A:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Spinner android:id="@+id/spinnerMajorAGroup" android:layout_width="match_parent" android:layout_height="45dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
 
-            <Spinner
-                android:id="@+id/spinnerEnglishGroup"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="10dp"
-                android:background="#FFF3E0"/>
-
-            <Spinner
-                android:id="@+id/spinnerPeGroup"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="15dp"
-                android:background="#FFF3E0"/>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Optional Majors (Leave unselected if none)"
-                android:textSize="12sp"
-                android:textColor="#777777"
-                android:layout_marginBottom="4dp"/>
-
-            <Spinner
-                android:id="@+id/spinnerMajorAGroup"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="10dp"
-                android:background="#E8F5E9"/>
-
-            <Spinner
-                android:id="@+id/spinnerMajorBGroup"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginBottom="15dp"
-                android:background="#E8F5E9"/>
+            <TextView android:text="Major B:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Spinner android:id="@+id/spinnerMajorBGroup" android:layout_width="match_parent" android:layout_height="45dp" android:background="#EEEEEE" android:layout_marginBottom="15dp"/>
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/layoutTeacherFields"
+            android:id="@+id/layoutTeacherSubjects"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingTop="10dp"
             android:visibility="gone">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="3. Teacher / School Admin Subjects Setup:"
+                android:text="4. Can Teach Subjects:"
                 android:textStyle="bold"
-                android:textColor="#2E8B57"
-                android:layout_marginBottom="10dp"/>
+                android:layout_marginBottom="10dp"
+                android:textColor="#D84315"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
                 android:layout_marginBottom="10dp">
 
                 <TextView
@@ -273,10 +241,9 @@
                     android:layout_width="0dp"
                     android:layout_height="50dp"
                     android:layout_weight="1"
-                    android:text="Select Teachable Subjects *"
-                    android:textColor="#666666"
+                    android:text="Select Subjects..."
                     android:gravity="center_vertical"
-                    android:paddingHorizontal="16dp"
+                    android:paddingStart="16dp"
                     android:background="@drawable/rounded_edittext_bg"
                     android:clickable="true"
                     android:focusable="true"/>
@@ -311,6 +278,52 @@
             android:textSize="18sp"
             android:backgroundTint="#1A237E"
             android:textColor="@android:color/white"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#DDDDDD"
+            android:layout_marginTop="30dp"
+            android:layout_marginBottom="20dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bulk Import (CSV)"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#FF9800"
+            android:gravity="center"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Teachers CSV (6 cols):\ntz, first, last, email, password, middle name\n\nStudents CSV (12 cols):\ntz, first, last, email, password, middle name, homeroom, math, english, sports, major a, major b"
+            android:textSize="13sp"
+            android:textColor="#666666"
+            android:gravity="center"
+            android:layout_marginBottom="15dp"/>
+
+        <Button
+            android:id="@+id/btnImportTeachers"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="Import Teachers CSV 📂"
+            android:textSize="16sp"
+            android:backgroundTint="#FF9800"
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="10dp"/>
+
+        <Button
+            android:id="@+id/btnImportStudents"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="Import Students CSV 📂"
+            android:textSize="16sp"
+            android:backgroundTint="#FF9800"
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="20dp"/>
 
     </LinearLayout>
 </ScrollView>
