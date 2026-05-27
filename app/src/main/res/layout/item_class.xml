@@ -52,10 +52,10 @@
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/tvTeacherName"
+                android:id="@+id/tvClassDetails"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Type: General"
+                android:text="Type, Grade, Class"
                 android:textColor="#757575"
                 android:textSize="14sp"
                 android:layout_marginTop="4dp" />
@@ -67,6 +67,5 @@
             android:src="@android:drawable/ic_media_play"
             android:rotation="180"
             app:tint="#BDBDBD" />
-
     </LinearLayout>
 </androidx.cardview.widget.CardView>

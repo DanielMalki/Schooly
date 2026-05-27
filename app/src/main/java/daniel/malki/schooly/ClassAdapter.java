@@ -42,66 +42,33 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ClassViewHol
 
     @Override
     public void onBindViewHolder(@NonNull ClassViewHolder holder, int position) {
-        SchoolClass currentClass = classList.get(position);
+        SchoolClass currentItem = classList.get(position);
 
-        String className = currentClass.getDisplayName() != null ? currentClass.getDisplayName() : currentClass.getClassId();
-        holder.tvName.setText(className);
+        holder.tvName.setText(currentItem.getDisplayName());
 
-        String rawType = currentClass.getType();
-        String displayType = "Unknown";
-        String colorHex = "#9E9E9E"; // צבע אפור כברירת מחדל
-        String letter = "C"; // אות ברירת מחדל
-
-        if (rawType != null) {
-            switch (rawType) {
-                case "homeroom":
-                    displayType = "Homeroom";
-                    colorHex = "#4CAF50"; // ירוק
-                    letter = "H";
-                    break;
-                case "math":
-                    displayType = "Math";
-                    colorHex = "#2196F3"; // כחול
-                    letter = "M";
-                    break;
-                case "english":
-                    displayType = "English";
-                    colorHex = "#FF9800"; // כתום
-                    letter = "E";
-                    break;
-                case "pe":
-                    displayType = "Physical Education";
-                    colorHex = "#E91E63"; // ורוד
-                    letter = "P";
-                    break;
-                case "major a":
-                    displayType = "Major A";
-                    colorHex = "#9C27B0"; // סגול
-                    letter = "A";
-                    break;
-                case "major b":
-                    displayType = "Major B";
-                    colorHex = "#00BCD4"; // תכלת
-                    letter = "B";
-                    break;
-                default:
-                    displayType = rawType;
-                    letter = rawType.substring(0, 1).toUpperCase();
-                    break;
-            }
+        String rawType = currentItem.getType() != null ? currentItem.getType() : "unknown";
+        String capType = rawType;
+        if (rawType.length() > 0) {
+            capType = rawType.substring(0, 1).toUpperCase() + rawType.substring(1);
         }
 
-        holder.tvType.setText("Type: " + displayType);
+        // ✨ שימוש בשדה החדש ששמור ישירות בתוך האובייקט (אין יותר צורך ב-gradeCache)
+        String gradeName = currentItem.getGradeNameForFilter();
+        if (gradeName == null || gradeName.isEmpty()) {
+            gradeName = "Unknown";
+        }
 
-        // הגדרת הצבע והאות בעיגול
-        holder.cardClassIcon.setCardBackgroundColor(Color.parseColor(colorHex));
-        holder.tvClassIconLetter.setText(letter);
+        // יצירת המשפט המלא
+        String detailsText = capType + ", " + gradeName + " grade, class " + currentItem.getDisplayName() + ".";
+        holder.tvClassDetails.setText(detailsText);
 
-        holder.itemView.setOnClickListener(v -> {
-            if (clickListener != null) {
-                clickListener.onClassClick(currentClass);
-            }
-        });
+        String firstLetter = currentItem.getDisplayName() != null && !currentItem.getDisplayName().isEmpty() ?
+                currentItem.getDisplayName().substring(0, 1).toUpperCase() : "C";
+        holder.tvClassIconLetter.setText(firstLetter);
+
+        String[] colors = {"#1976D2", "#D32F2F", "#388E3C", "#FBC02D", "#8E24AA", "#F57C00"};
+        int colorIndex = position % colors.length;
+        holder.cardClassIcon.setCardBackgroundColor(Color.parseColor(colors[colorIndex]));
     }
 
     @Override
@@ -110,67 +77,82 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ClassViewHol
     }
 
     public void updateList(List<SchoolClass> newList) {
-        this.classList = newList;
-        this.classListFull = new ArrayList<>(newList);
+        List<SchoolClass> temp = new ArrayList<>(newList);
+        this.classList.clear();
+        this.classList.addAll(temp);
+        this.classListFull = new ArrayList<>(temp);
         notifyDataSetChanged();
     }
 
-    // ✨ הפונקציה המעודכנת שמקבלת גם טקסט לחיפוש וגם סוג מקצוע
-    public void filter(String text, String typeFilter) {
+    // הפילטר עכשיו מקבל את שם השכבה ומסנן לפיו
+    public void filter(String text, String typeFilter, String gradeFilterName) {
         classList.clear();
-        String query = text.toLowerCase().trim();
 
-        for (SchoolClass item : classListFull) {
-            boolean matchesSearch = true;
-            boolean matchesType = true;
+        boolean isSearchEmpty = text.trim().isEmpty();
+        boolean isTypeAll = typeFilter.equals("All Types");
+        boolean isGradeAll = gradeFilterName.equals("All Grades") || gradeFilterName.isEmpty();
 
-            // 1. בדיקת חיפוש טקסט
-            if (!query.isEmpty()) {
-                String name = item.getDisplayName() != null ? item.getDisplayName() : item.getClassId();
-                if (name == null || !name.toLowerCase().contains(query)) {
-                    matchesSearch = false;
+        if (isSearchEmpty && isTypeAll && isGradeAll) {
+            classList.addAll(classListFull);
+        } else {
+            text = text.toLowerCase();
+            for (SchoolClass item : classListFull) {
+                boolean matchesSearch = item.getDisplayName() != null && item.getDisplayName().toLowerCase().contains(text);
+                boolean matchesType = true;
+                boolean matchesGrade = true;
+
+                if (!isTypeAll) {
+                    String rawType = item.getType() != null ? item.getType().toLowerCase() : "";
+                    String mappedType = "";
+
+                    switch (rawType) {
+                        case "homeroom": mappedType = "Homeroom"; break;
+                        case "math": mappedType = "Math"; break;
+                        case "english": mappedType = "English"; break;
+                        case "sports": mappedType = "Physical Education"; break;
+                        case "pe": mappedType = "Physical Education"; break;
+                        case "major a": mappedType = "Major A"; break;
+                        case "major b": mappedType = "Major B"; break;
+                        default: mappedType = rawType; break;
+                    }
+
+                    if (!mappedType.equalsIgnoreCase(typeFilter)) {
+                        matchesType = false;
+                    }
                 }
-            }
 
-            // 2. בדיקת סינון לפי סוג מקצוע
-            if (!"All Types".equals(typeFilter)) {
-                String rawType = item.getType() != null ? item.getType() : "";
-                String mappedType = "Unknown";
-
-                // מתרגם את מה שיש ב-DB למה שהמשתמש רואה בספינר
-                switch (rawType) {
-                    case "homeroom": mappedType = "Homeroom"; break;
-                    case "math": mappedType = "Math"; break;
-                    case "english": mappedType = "English"; break;
-                    case "pe": mappedType = "Physical Education"; break;
-                    case "major a": mappedType = "Major A"; break;
-                    case "major b": mappedType = "Major B"; break;
-                    default: mappedType = rawType; break;
+                // ✨ סינון לפי השכבה שנמצאת באובייקט עצמו
+                if (!isGradeAll) {
+                    String itemGradeName = item.getGradeNameForFilter();
+                    if (itemGradeName == null || !itemGradeName.equals(gradeFilterName)) {
+                        matchesGrade = false;
+                    }
                 }
 
-                if (!mappedType.equalsIgnoreCase(typeFilter)) {
-                    matchesType = false;
+                if (matchesSearch && matchesType && matchesGrade) {
+                    classList.add(item);
                 }
-            }
-
-            // אם השורה עומדת גם בחיפוש וגם בסינון, נוסיף אותה
-            if (matchesSearch && matchesType) {
-                classList.add(item);
             }
         }
         notifyDataSetChanged();
     }
 
-    public static class ClassViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvType, tvClassIconLetter;
+    public class ClassViewHolder extends RecyclerView.ViewHolder {
+        TextView tvName, tvClassDetails, tvClassIconLetter;
         CardView cardClassIcon;
 
         public ClassViewHolder(@NonNull View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tvClassName);
-            tvType = itemView.findViewById(R.id.tvTeacherName);
+            tvClassDetails = itemView.findViewById(R.id.tvClassDetails);
             cardClassIcon = itemView.findViewById(R.id.cardClassIcon);
             tvClassIconLetter = itemView.findViewById(R.id.tvClassIconLetter);
+
+            itemView.setOnClickListener(v -> {
+                if (clickListener != null && getAdapterPosition() != RecyclerView.NO_POSITION) {
+                    clickListener.onClassClick(classList.get(getAdapterPosition()));
+                }
+            });
         }
     }
 }

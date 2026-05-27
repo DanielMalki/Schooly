@@ -101,7 +101,22 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Assignments (Subject &amp; Teacher):"
+            android:text="Select Grade:"
+            android:textStyle="bold"
+            android:layout_marginBottom="5dp"
+            android:textColor="#333333"/>
+
+        <Spinner
+            android:id="@+id/spinnerGradeSelect"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="#EEEEEE"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="20dp"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Assignments (Select Subject first, then Teacher):"
             android:textStyle="bold"
             android:textColor="#2E8B57"
             android:textSize="15sp"
@@ -155,7 +170,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Upload a CSV file with 2 columns:\nColumn 1: Group Name\nColumn 2: Type (homeroom/math/english/sports/major a/major b)"
+            android:text="Upload a CSV file with 3 columns:\nCol 1: Group Name\nCol 2: Type (homeroom/math/english/sports/major a/major b)\nCol 3: Grade Name (e.g. 11th grade)"
             android:textSize="14sp"
             android:textColor="#666666"
             android:gravity="center"
