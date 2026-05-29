@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="3. Student's Main Grade:"
+        android:textStyle="bold"
+        android:layout_marginBottom="5dp"
+        android:textColor="#2E8B57"/>
+
+    <Spinner
+        android:id="@+id/spinnerStudentGrade"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="#EEEEEE"
+        android:layout_marginBottom="15dp"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#DDDDDD"
+        android:layout_marginBottom="15dp"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="4. Class Assignments:"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp"
+        android:textColor="#2E8B57"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Filter Classes By Grade:"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="5dp"
+        android:textColor="#555555"/>
+
+    <Spinner
+        android:id="@+id/spinnerFilterClassesGrade"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="#E8F5E9"
+        android:layout_marginBottom="15dp"/>
+
+    <TextView android:text="Homeroom Class:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Spinner android:id="@+id/spinnerHomeroom" android:layout_width="match_parent" android:layout_height="50dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+    <TextView android:text="Math Group:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Spinner android:id="@+id/spinnerMathGroup" android:layout_width="match_parent" android:layout_height="50dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+    <TextView android:text="English Group:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Spinner android:id="@+id/spinnerEnglishGroup" android:layout_width="match_parent" android:layout_height="50dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+    <TextView android:text="Physical Education:" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Spinner android:id="@+id/spinnerPeGroup" android:layout_width="match_parent" android:layout_height="50dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+    <TextView android:text="Major A (Optional):" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Spinner android:id="@+id/spinnerMajorAGroup" android:layout_width="match_parent" android:layout_height="50dp" android:background="#EEEEEE" android:layout_marginBottom="10dp"/>
+
+    <TextView android:text="Major B (Optional):" android:textSize="12sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    <Spinner android:id="@+id/spinnerMajorBGroup" android:layout_width="match_parent" android:layout_height="50dp" android:background="#EEEEEE" android:layout_marginBottom="15dp"/>
+
+</LinearLayout>
