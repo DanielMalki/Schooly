@@ -1,5 +1,6 @@
 package daniel.malki.schooly;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -71,6 +72,17 @@ public class AddUserActivity extends BaseMenuActivity {
         btnSaveUser.setOnClickListener(v -> saveNewUser());
         btnGoToCsvImport.setOnClickListener(v -> Toast.makeText(this, "CSV Import Screen coming soon! 📂", Toast.LENGTH_SHORT).show());
         btnQuickAddSchool.setOnClickListener(v -> showQuickAddSchoolDialog());
+
+        btnGoToCsvImport.setOnClickListener(v -> {
+            if (selectedSchoolRef == null) {
+                Toast.makeText(this, "Please select a school from the list first.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            Intent intent = new Intent(AddUserActivity.this, CsvImportActivity.class);
+            // מעבירים את ה-ID של בית הספר הנבחר למסך ה-CSV
+            intent.putExtra("SCHOOL_ID", selectedSchoolRef.getId());
+            startActivity(intent);
+        });
     }
 
     private void initViews() {

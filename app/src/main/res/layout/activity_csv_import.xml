@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bulk User Import 📂"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#1A237E"
+            android:layout_marginBottom="20dp"
+            android:gravity="center"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="20dp"
+            android:elevation="4dp"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🎓 Import Students"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#2E8B57"
+                android:layout_marginBottom="10dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="The CSV file must include the following columns in order (from left to right):\nTZ, FirstName, MiddleName, LastName, Email, Password, Grade, Homeroom, Math, English, Sports, MajorA, MajorB"
+                android:textSize="14sp"
+                android:textColor="#555555"
+                android:layout_marginBottom="15dp"
+                android:lineSpacingExtra="4dp"/>
+
+            <Button
+                android:id="@+id/btnImportStudentsCsv"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:text="Choose Students CSV File"
+                android:backgroundTint="#2E8B57"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="20dp"
+            android:elevation="4dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="👨‍🏫 Import Teachers"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#E65100"
+                android:layout_marginBottom="10dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="The CSV file must include the following columns in order (from left to right):\nTZ, FirstName, MiddleName, LastName, Email, Password, Subjects (comma separated, e.g., 'Math,History')"
+                android:textSize="14sp"
+                android:textColor="#555555"
+                android:layout_marginBottom="15dp"
+                android:lineSpacingExtra="4dp"/>
+
+            <Button
+                android:id="@+id/btnImportTeachersCsv"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:text="Choose Teachers CSV File"
+                android:backgroundTint="#E65100"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
