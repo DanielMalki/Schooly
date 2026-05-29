@@ -2,6 +2,8 @@ package daniel.malki.schooly;
 
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.PropertyName;
+
+import java.util.List;
 import java.util.Map;
 
 public class User {
@@ -11,6 +13,8 @@ public class User {
     private int type;        // 0=תלמיד, 1=מורה, 2=מנהל בי"ס, 3=מנהל מערכת
     private DocumentReference schoolRef; // הרפרנס החדש לבית הספר!
     private Map<String, DocumentReference> classes;
+    private DocumentReference grade;
+    private List<DocumentReference> teachableSubjects;
 
     public User() {}
 
@@ -51,6 +55,16 @@ public class User {
     public Map<String, DocumentReference> getClasses() { return classes; }
     @PropertyName("classes")
     public void setClasses(Map<String, DocumentReference> classes) { this.classes = classes; }
+
+    @PropertyName("grade")
+    public DocumentReference getGrade() { return grade; }
+    @PropertyName("grade")
+    public void setGrade(DocumentReference grade) { this.grade = grade; }
+
+    @PropertyName("teachableSubjects")
+    public List<DocumentReference> getTeachableSubjects() { return teachableSubjects; }
+    @PropertyName("teachableSubjects")
+    public void setTeachableSubjects(List<DocumentReference> teachableSubjects) { this.teachableSubjects = teachableSubjects; }
 
     // ✨ הפונקציה שמגדירה מיהו תלמיד חריג (מתעלמת מהשמירה לדאטהבייס)
     @com.google.firebase.firestore.Exclude
