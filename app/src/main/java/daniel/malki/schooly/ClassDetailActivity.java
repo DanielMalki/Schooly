@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,7 +28,7 @@ public class ClassDetailActivity extends BaseMenuActivity {
 
     private EditText etClassSchoolLocked, etClassTypeLocked, etClassName;
     private Spinner spinnerGradeSelect;
-    private Button btnAddPairRow, btnOpenAddStudentDialog, btnSaveClassDetails, btnDeleteClass;
+    private Button btnAddPairRow, btnSaveClassDetails, btnDeleteClass;
     private LinearLayout layoutPairsContainer, layoutClassStudentsList;
     private TextView tvClassDetailTitle;
 
@@ -38,323 +39,358 @@ public class ClassDetailActivity extends BaseMenuActivity {
     private DocumentReference currentGradeRef;
     private String classType;
 
-    // Data lists for Spinners
+    // רשימות עבור ה-Spinner של השכבות
     private ArrayList<String> gradeNames = new ArrayList<>();
     private ArrayList<DocumentReference> gradeRefs = new ArrayList<>();
 
-    private ArrayList<String> subjectNames = new ArrayList<>();
-    private ArrayList<DocumentReference> subjectRefs = new ArrayList<>();
-
-    private ArrayList<String> teacherNames = new ArrayList<>();
-    private ArrayList<DocumentReference> teacherRefs = new ArrayList<>();
-
-    private List<String> currentStudentIds = new ArrayList<>();
+    // רשימות גלובליות למקצועות ומורים
+    private List<String> subjectNames = new ArrayList<>(), subjectIds = new ArrayList<>();
+    private List<Map<String, Object>> allTeachersData = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        selectedClassId = getIntent().getStringExtra("classId");
-        if (selectedClassId == null || selectedClassId.isEmpty()) {
-            Toast.makeText(this, "Error: No class ID provided.", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-
         db = FirebaseFirestore.getInstance();
-        classRef = db.collection("classes").document(selectedClassId);
 
-        initViews();
-        loadClassData();
-    }
-
-    private void initViews() {
-        tvClassDetailTitle = findViewById(R.id.tvClassDetailTitle);
         etClassSchoolLocked = findViewById(R.id.etClassSchoolLocked);
         etClassTypeLocked = findViewById(R.id.etClassTypeLocked);
         etClassName = findViewById(R.id.etClassName);
         spinnerGradeSelect = findViewById(R.id.spinnerGradeSelect);
-
-        layoutPairsContainer = findViewById(R.id.layoutPairsContainer);
-        layoutClassStudentsList = findViewById(R.id.layoutClassStudentsList);
-
         btnAddPairRow = findViewById(R.id.btnAddPairRow);
-        btnOpenAddStudentDialog = findViewById(R.id.btnOpenAddStudentDialog);
         btnSaveClassDetails = findViewById(R.id.btnSaveClassDetails);
         btnDeleteClass = findViewById(R.id.btnDeleteClass);
+        layoutPairsContainer = findViewById(R.id.layoutPairsContainer);
+        layoutClassStudentsList = findViewById(R.id.layoutClassStudentsList);
+        tvClassDetailTitle = findViewById(R.id.tvClassDetailTitle);
 
-        btnAddPairRow.setOnClickListener(v -> addPairRow(null));
-        btnSaveClassDetails.setOnClickListener(v -> saveClassDetails());
-        btnDeleteClass.setOnClickListener(v -> confirmDeleteClass());
-        btnOpenAddStudentDialog.setOnClickListener(v -> openAddStudentDialog());
+        selectedClassId = getIntent().getStringExtra("classId");
+        if (selectedClassId == null) {
+            Toast.makeText(this, "Class ID is missing!", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        classRef = db.collection("classes").document(selectedClassId);
+
+        // טוענים קודם שכבות, מקצועות ומורים, ורק אז את פרטי הכיתה
+        loadGrades();
+        loadSubjectsAndTeachers();
+
+        if (btnSaveClassDetails != null) {
+            btnSaveClassDetails.setOnClickListener(v -> saveClassDetails());
+        }
+        if (btnDeleteClass != null) {
+            btnDeleteClass.setOnClickListener(v -> deleteClass());
+        }
+        if (btnAddPairRow != null) {
+            btnAddPairRow.setOnClickListener(v -> addAssignmentRow(null, null));
+        }
     }
 
-    private void loadClassData() {
-        classRef.get().addOnSuccessListener(documentSnapshot -> {
-            if (documentSnapshot.exists()) {
-                SchoolClass schoolClass = documentSnapshot.toObject(SchoolClass.class);
-                if (schoolClass == null) return;
+    private void loadSubjectsAndTeachers() {
+        db.collection("subjects").get().addOnSuccessListener(snapshots -> {
+            subjectNames.clear();
+            subjectIds.clear();
+            subjectNames.add("Select Subject...");
+            subjectIds.add("");
+            for (QueryDocumentSnapshot doc : snapshots) {
+                subjectIds.add(doc.getId());
+                subjectNames.add(doc.getString("displayName"));
+            }
 
-                etClassName.setText(schoolClass.getDisplayName());
-                tvClassDetailTitle.setText(schoolClass.getDisplayName() + " Details");
+            db.collection("users").whereIn("type", java.util.Arrays.asList(1, 2)).get().addOnSuccessListener(userSnaps -> {
+                allTeachersData.clear();
 
-                classType = schoolClass.getType();
-                etClassTypeLocked.setText(classType != null ? classType : "N/A");
+                for (QueryDocumentSnapshot doc : userSnaps) {
+                    Map<String, Object> teacher = new HashMap<>();
+                    teacher.put("id", doc.getId());
+                    String name = doc.getString("name") != null ? doc.getString("name") : doc.getString("firstName") + " " + doc.getString("lastName");
+                    teacher.put("name", name);
 
-                schoolRef = documentSnapshot.getDocumentReference("school");
-                currentGradeRef = schoolClass.getGradeRef();
-
-                if (schoolRef != null) {
-                    schoolRef.get().addOnSuccessListener(schoolDoc -> {
-                        if (schoolDoc.exists()) {
-                            // ✨ תוקן ל-displayName
-                            String sName = schoolDoc.getString("displayName") != null ? schoolDoc.getString("displayName") : schoolDoc.getId();
-                            etClassSchoolLocked.setText(sName);
+                    List<String> teachableSubIds = new ArrayList<>();
+                    List<DocumentReference> subRefs = (List<DocumentReference>) doc.get("teachableSubjects");
+                    if (subRefs != null) {
+                        for (DocumentReference ref : subRefs) {
+                            teachableSubIds.add(ref.getId());
                         }
-                    });
-                }
-
-                loadDropdownData(schoolClass.getCourseAssignments());
-                loadEnrolledStudents();
-            }
-        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to load class data.", Toast.LENGTH_SHORT).show());
-    }
-
-    private void loadDropdownData(List<SchoolClass.CourseAssignment> existingAssignments) {
-        if (schoolRef == null) return;
-
-        db.collection("grades").whereEqualTo("school", schoolRef).get().addOnSuccessListener(gradesSnap -> {
-            gradeNames.clear(); gradeRefs.clear();
-            int selectedGradeIndex = 0;
-
-            for (QueryDocumentSnapshot g : gradesSnap) {
-                // ✨ תוקן ל-displayName
-                String gName = g.getString("displayName") != null ? g.getString("displayName") : g.getId();
-                gradeNames.add(gName);
-                gradeRefs.add(g.getReference());
-                if (currentGradeRef != null && g.getId().equals(currentGradeRef.getId())) {
-                    selectedGradeIndex = gradeNames.size() - 1;
-                }
-            }
-
-            ArrayAdapter<String> gradeAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, gradeNames);
-            gradeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinnerGradeSelect.setAdapter(gradeAdapter);
-            if (gradeNames.size() > 0) {
-                spinnerGradeSelect.setSelection(selectedGradeIndex);
-            }
-
-            db.collection("subjects").get().addOnSuccessListener(subjSnap -> {
-                subjectNames.clear(); subjectRefs.clear();
-                subjectNames.add("Select Subject..."); subjectRefs.add(null);
-
-                for (QueryDocumentSnapshot s : subjSnap) {
-                    // ✨ תוקן ל-displayName
-                    String subjName = s.getString("displayName") != null ? s.getString("displayName") : s.getId();
-                    subjectNames.add(subjName);
-                    subjectRefs.add(s.getReference());
-                }
-
-                db.collection("users").whereIn("type", java.util.Arrays.asList(1, 2)).whereEqualTo("school", schoolRef).get().addOnSuccessListener(teachSnap -> {                    teacherNames.clear(); teacherRefs.clear();
-                    teacherNames.add("Select Teacher..."); teacherRefs.add(null);
-
-                    for (QueryDocumentSnapshot t : teachSnap) {
-                        String fName = t.getString("firstName") != null ? t.getString("firstName") : "";
-                        String lName = t.getString("lastName") != null ? t.getString("lastName") : "";
-                        String fullName = t.getString("name") != null ? t.getString("name") : (fName + " " + lName).trim();
-                        teacherNames.add(fullName);
-                        teacherRefs.add(t.getReference());
                     }
+                    teacher.put("subjects", teachableSubIds);
+                    allTeachersData.add(teacher);
+                }
 
-                    layoutPairsContainer.removeAllViews();
-                    if (existingAssignments != null && !existingAssignments.isEmpty()) {
-                        for (SchoolClass.CourseAssignment assignment : existingAssignments) {
-                            addPairRow(assignment);
-                        }
-                    } else {
-                        addPairRow(null);
-                    }
-                });
+                loadClassDetails();
             });
         });
     }
 
-    private void addPairRow(SchoolClass.CourseAssignment assignment) {
+    private void addAssignmentRow(DocumentReference preSelectedSub, DocumentReference preSelectedTeach) {
         View rowView = LayoutInflater.from(this).inflate(R.layout.item_class_assignment_row, layoutPairsContainer, false);
-
-        Spinner spinnerSubj = rowView.findViewById(R.id.spinnerRowSubject);
-        Spinner spinnerTeach = rowView.findViewById(R.id.spinnerRowTeacher);
+        Spinner spinSub = rowView.findViewById(R.id.spinnerRowSubject);
+        Spinner spinTeach = rowView.findViewById(R.id.spinnerRowTeacher);
         ImageButton btnRemove = rowView.findViewById(R.id.btnRemoveRow);
 
-        ArrayAdapter<String> subjAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, subjectNames);
-        subjAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerSubj.setAdapter(subjAdapter);
+        spinSub.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, subjectNames));
 
-        ArrayAdapter<String> teachAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, teacherNames);
-        teachAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerTeach.setAdapter(teachAdapter);
+        List<String> rowTeacherNames = new ArrayList<>();
+        List<String> rowTeacherIds = new ArrayList<>();
+        rowTeacherNames.add("Select Teacher...");
+        rowTeacherIds.add("");
 
-        // בחירת המקצוע והמורה השמורים (השוואה חסינה באמצעות Path)
-        if (assignment != null) {
-            if (assignment.getSubject() != null) {
-                for (int i = 0; i < subjectRefs.size(); i++) {
-                    if (subjectRefs.get(i) != null &&
-                            subjectRefs.get(i).getPath().equals(assignment.getSubject().getPath())) {
-                        spinnerSubj.setSelection(i);
-                        break;
+        ArrayAdapter<String> teacherAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, rowTeacherNames);
+        spinTeach.setAdapter(teacherAdapter);
+        spinTeach.setEnabled(false);
+        spinTeach.setTag(rowTeacherIds);
+
+        final boolean[] isFirstLoad = {true};
+
+        spinSub.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                rowTeacherNames.clear();
+                rowTeacherIds.clear();
+                rowTeacherNames.add("Select Teacher...");
+                rowTeacherIds.add("");
+
+                if (position > 0) {
+                    String selectedSubId = subjectIds.get(position);
+                    for (Map<String, Object> t : allTeachersData) {
+                        List<String> tSubs = (List<String>) t.get("subjects");
+                        if (tSubs != null && tSubs.contains(selectedSubId)) {
+                            rowTeacherNames.add((String) t.get("name"));
+                            rowTeacherIds.add((String) t.get("id"));
+                        }
                     }
+                    spinTeach.setEnabled(true);
+                } else {
+                    spinTeach.setEnabled(false);
+                }
+                teacherAdapter.notifyDataSetChanged();
+
+                if (isFirstLoad[0] && preSelectedTeach != null) {
+                    String teachId = preSelectedTeach.getId();
+                    for (int i = 0; i < rowTeacherIds.size(); i++) {
+                        if (rowTeacherIds.get(i).equals(teachId)) {
+                            spinTeach.setSelection(i);
+                            break;
+                        }
+                    }
+                    isFirstLoad[0] = false;
+                } else {
+                    spinTeach.setSelection(0);
                 }
             }
-            if (assignment.getTeacher() != null) {
-                for (int i = 0; i < teacherRefs.size(); i++) {
-                    if (teacherRefs.get(i) != null &&
-                            teacherRefs.get(i).getPath().equals(assignment.getTeacher().getPath())) {
-                        spinnerTeach.setSelection(i);
-                        break;
-                    }
-                }
-            }
-        }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         btnRemove.setOnClickListener(v -> layoutPairsContainer.removeView(rowView));
         layoutPairsContainer.addView(rowView);
+
+        if (preSelectedSub != null) {
+            String subId = preSelectedSub.getId();
+            for (int i = 0; i < subjectIds.size(); i++) {
+                if (subjectIds.get(i).equals(subId)) {
+                    spinSub.setSelection(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void loadClassDetails() {
+        classRef.get().addOnSuccessListener(documentSnapshot -> {
+            if (documentSnapshot.exists()) {
+                String displayName = documentSnapshot.getString("displayName");
+                if (displayName != null) {
+                    etClassName.setText(displayName);
+                    if (tvClassDetailTitle != null) {
+                        tvClassDetailTitle.setText("Class: " + displayName);
+                    }
+                }
+
+                classType = documentSnapshot.getString("type");
+                if (classType != null) {
+                    etClassTypeLocked.setText(classType);
+
+                    if (classType.equalsIgnoreCase("homeroom")) {
+                        if (layoutPairsContainer != null) layoutPairsContainer.setVisibility(View.GONE);
+                        if (btnAddPairRow != null) btnAddPairRow.setVisibility(View.GONE);
+                    } else {
+                        if (layoutPairsContainer != null) layoutPairsContainer.setVisibility(View.VISIBLE);
+                        if (btnAddPairRow != null) btnAddPairRow.setVisibility(View.VISIBLE);
+                    }
+                }
+
+                currentGradeRef = documentSnapshot.getDocumentReference("gradeRef");
+                syncSelectedGradeInSpinner();
+
+                schoolRef = documentSnapshot.getDocumentReference("school");
+                if (schoolRef != null) {
+                    schoolRef.get().addOnSuccessListener(schoolDoc -> {
+                        if (schoolDoc.exists()) {
+                            String schoolName = schoolDoc.getString("displayName");
+                            if (schoolName == null) schoolName = schoolDoc.getId();
+                            etClassSchoolLocked.setText(schoolName);
+                        }
+                    });
+                }
+
+                loadEnrolledStudents();
+
+                if (layoutPairsContainer != null) {
+                    layoutPairsContainer.removeAllViews();
+                    List<Map<String, Object>> courseAssignments = (List<Map<String, Object>>) documentSnapshot.get("courseAssignments");
+
+                    if (courseAssignments != null && !courseAssignments.isEmpty()) {
+                        for (Map<String, Object> assignment : courseAssignments) {
+                            DocumentReference subRef = (DocumentReference) assignment.get("subject");
+                            DocumentReference teachRef = (DocumentReference) assignment.get("teacher");
+                            addAssignmentRow(subRef, teachRef);
+                        }
+                    } else if (classType != null && !classType.equalsIgnoreCase("homeroom")) {
+                        addAssignmentRow(null, null);
+                    }
+                }
+            }
+        }).addOnFailureListener(e -> Toast.makeText(this, "Error loading class details: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     private void saveClassDetails() {
         String newName = etClassName.getText().toString().trim();
         if (newName.isEmpty()) {
-            Toast.makeText(this, "Class name cannot be empty.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Class name cannot be empty", Toast.LENGTH_SHORT).show();
             return;
-        }
-
-        DocumentReference selectedGrade = null;
-        if (spinnerGradeSelect.getSelectedItemPosition() >= 0 && gradeRefs.size() > 0) {
-            selectedGrade = gradeRefs.get(spinnerGradeSelect.getSelectedItemPosition());
-        }
-
-        List<SchoolClass.CourseAssignment> assignmentsToSave = new ArrayList<>();
-
-        for (int i = 0; i < layoutPairsContainer.getChildCount(); i++) {
-            View row = layoutPairsContainer.getChildAt(i);
-            Spinner spinnerSubj = row.findViewById(R.id.spinnerRowSubject);
-            Spinner spinnerTeach = row.findViewById(R.id.spinnerRowTeacher);
-
-            int subjPos = spinnerSubj.getSelectedItemPosition();
-            int teachPos = spinnerTeach.getSelectedItemPosition();
-
-            if (subjPos > 0 && teachPos > 0) {
-                DocumentReference subjRef = subjectRefs.get(subjPos);
-                DocumentReference teachRef = teacherRefs.get(teachPos);
-                assignmentsToSave.add(new SchoolClass.CourseAssignment(subjRef, teachRef));
-            }
         }
 
         Map<String, Object> updates = new HashMap<>();
         updates.put("displayName", newName);
-        updates.put("gradeRef", selectedGrade);
-        // ✨ התיקון לשמירה בפיירבייס!
-        updates.put("courseAssignments", assignmentsToSave);
+
+        int selectedGradePos = spinnerGradeSelect.getSelectedItemPosition();
+        if (selectedGradePos >= 0 && selectedGradePos < gradeRefs.size()) {
+            updates.put("gradeRef", gradeRefs.get(selectedGradePos));
+        }
+
+        if (classType != null && !classType.equalsIgnoreCase("homeroom")) {
+            List<Map<String, Object>> courseAssignments = new ArrayList<>();
+            for (int i = 0; i < layoutPairsContainer.getChildCount(); i++) {
+                View row = layoutPairsContainer.getChildAt(i);
+                Spinner subSpin = row.findViewById(R.id.spinnerRowSubject);
+                Spinner teachSpin = row.findViewById(R.id.spinnerRowTeacher);
+
+                int subPos = subSpin.getSelectedItemPosition();
+                int teachPos = teachSpin.getSelectedItemPosition();
+
+                if (subPos == 0 || teachPos == 0) {
+                    Toast.makeText(this, "Error: Row " + (i + 1) + " has missing selections!", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                String selectedSubjectId = subjectIds.get(subPos);
+                List<String> currentTeachIds = (List<String>) teachSpin.getTag();
+                String selectedTeacherId = currentTeachIds.get(teachPos);
+
+                Map<String, Object> assignment = new HashMap<>();
+                assignment.put("subject", db.collection("subjects").document(selectedSubjectId));
+                assignment.put("teacher", db.collection("users").document(selectedTeacherId));
+                courseAssignments.add(assignment);
+            }
+            updates.put("courseAssignments", courseAssignments);
+        }
 
         classRef.update(updates).addOnSuccessListener(aVoid -> {
-            Toast.makeText(this, "Class updated successfully! ✅", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Class details updated successfully! 💾", Toast.LENGTH_SHORT).show();
             finish();
-        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to update class.", Toast.LENGTH_SHORT).show());
+        }).addOnFailureListener(e -> Toast.makeText(this, "Error updating class: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private int extractGradeNumber(String name) {
+        if (name == null) return 9999;
+        String numStr = name.replaceAll("\\D+", "");
+        if (numStr.isEmpty()) return 9999;
+        return Integer.parseInt(numStr);
+    }
+
+    private void loadGrades() {
+        db.collection("grades").get().addOnSuccessListener(snapshot -> {
+            gradeNames.clear();
+            gradeRefs.clear();
+
+            List<QueryDocumentSnapshot> sortedGrades = new ArrayList<>();
+            for (QueryDocumentSnapshot doc : snapshot) {
+                sortedGrades.add(doc);
+            }
+
+            java.util.Collections.sort(sortedGrades, (d1, d2) -> {
+                String n1 = d1.getString("displayName");
+                if (n1 == null) n1 = d1.getId();
+                String n2 = d2.getString("displayName");
+                if (n2 == null) n2 = d2.getId();
+                return Integer.compare(extractGradeNumber(n1), extractGradeNumber(n2));
+            });
+
+            for (QueryDocumentSnapshot doc : sortedGrades) {
+                String displayName = doc.getString("displayName");
+                gradeNames.add(displayName != null ? displayName : doc.getId());
+                gradeRefs.add(doc.getReference());
+            }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, gradeNames);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerGradeSelect.setAdapter(adapter);
+
+            syncSelectedGradeInSpinner();
+        }).addOnFailureListener(e -> Toast.makeText(this, "Error loading grades: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void syncSelectedGradeInSpinner() {
+        if (currentGradeRef != null && gradeRefs != null && spinnerGradeSelect != null) {
+            for (int i = 0; i < gradeRefs.size(); i++) {
+                if (gradeRefs.get(i).getId().equals(currentGradeRef.getId())) {
+                    spinnerGradeSelect.setSelection(i);
+                    break;
+                }
+            }
+        }
     }
 
     private void loadEnrolledStudents() {
-        if (classType == null || classType.isEmpty()) return;
+        if (classType == null || layoutClassStudentsList == null) return;
+        layoutClassStudentsList.removeAllViews();
 
         db.collection("users")
                 .whereEqualTo("type", 0)
-                .whereEqualTo("classes." + classType, classRef)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
-                    layoutClassStudentsList.removeAllViews();
-                    currentStudentIds.clear();
-
-                    if (queryDocumentSnapshots.isEmpty()) {
-                        TextView tvEmpty = new TextView(this);
-                        tvEmpty.setText("No students enrolled yet.");
-                        tvEmpty.setPadding(0, 10, 0, 10);
-                        layoutClassStudentsList.addView(tvEmpty);
-                        return;
-                    }
-
-                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                        String studentId = document.getId();
-                        currentStudentIds.add(studentId);
-                        String firstName = document.getString("firstName") != null ? document.getString("firstName") : "";
-                        String lastName = document.getString("lastName") != null ? document.getString("lastName") : "";
-
-                        TextView tvStudent = new TextView(this);
-                        tvStudent.setText("• " + firstName + " " + lastName);
-                        tvStudent.setTextSize(16f);
-                        tvStudent.setTextColor(Color.parseColor("#333333"));
-                        tvStudent.setPadding(0, 8, 0, 8);
-                        layoutClassStudentsList.addView(tvStudent);
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        Map<String, Object> classes = (Map<String, Object>) doc.get("classes");
+                        if (classes != null && classes.containsKey(classType)) {
+                            Object ref = classes.get(classType);
+                            if (ref instanceof DocumentReference && ((DocumentReference) ref).getId().equals(selectedClassId)) {
+                                TextView tvStudent = new TextView(this);
+                                tvStudent.setText(doc.getString("name") + " (" + doc.getString("email") + ")");
+                                tvStudent.setTextSize(16);
+                                tvStudent.setPadding(10, 10, 10, 10);
+                                tvStudent.setTextColor(Color.BLACK);
+                                layoutClassStudentsList.addView(tvStudent);
+                            }
+                        }
                     }
                 });
     }
 
-    private void confirmDeleteClass() {
+    private void deleteClass() {
         new AlertDialog.Builder(this)
                 .setTitle("Delete Class")
-                .setMessage("Are you sure you want to completely delete this class? This action cannot be undone.")
-                .setPositiveButton("Delete", (dialog, which) -> deleteClassFromDatabase())
+                .setMessage("Are you sure you want to delete this class permanently?")
+                .setPositiveButton("Yes, Delete", (dialog, which) -> {
+                    classRef.delete().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Class deleted successfully 🗑️", Toast.LENGTH_SHORT).show();
+                        finish();
+                    }).addOnFailureListener(e -> Toast.makeText(this, "Delete failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                })
                 .setNegativeButton("Cancel", null)
                 .show();
-    }
-
-    private void deleteClassFromDatabase() {
-        com.google.firebase.firestore.WriteBatch batch = db.batch();
-        batch.delete(classRef);
-
-        for (String studentId : currentStudentIds) {
-            DocumentReference studentRef = db.collection("users").document(studentId);
-            batch.update(studentRef, "classes." + classType, null);
-        }
-
-        batch.commit().addOnSuccessListener(aVoid -> {
-            Toast.makeText(this, "Class deleted! 🗑️", Toast.LENGTH_SHORT).show();
-            finish();
-        }).addOnFailureListener(e -> Toast.makeText(this, "Failed to delete class.", Toast.LENGTH_SHORT).show());
-    }
-
-    private void openAddStudentDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Add Student to Class");
-
-        final EditText input = new EditText(this);
-        input.setHint("Enter Student Email");
-        builder.setView(input);
-
-        builder.setPositiveButton("Add", (dialog, which) -> {
-            String email = input.getText().toString().trim();
-            if (!email.isEmpty()) {
-                addStudentToClass(email);
-            }
-        });
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-        builder.show();
-    }
-
-    private void addStudentToClass(String email) {
-        db.collection("users")
-                .whereEqualTo("email", email)
-                .whereEqualTo("type", 0)
-                .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    if (!queryDocumentSnapshots.isEmpty()) {
-                        DocumentReference studentRef = queryDocumentSnapshots.getDocuments().get(0).getReference();
-                        studentRef.update("classes." + classType, classRef)
-                                .addOnSuccessListener(aVoid -> {
-                                    Toast.makeText(this, "Student added! ✅", Toast.LENGTH_SHORT).show();
-                                    loadEnrolledStudents();
-                                });
-                    } else {
-                        Toast.makeText(this, "Student not found.", Toast.LENGTH_SHORT).show();
-                    }
-                });
     }
 
     @Override

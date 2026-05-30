@@ -56,7 +56,6 @@ public class ManageClassesActivity extends BaseMenuActivity {
         super.onCreate(savedInstanceState);
         setTitle("Manage Classes");
 
-        // ✨ התיקון הקריטי מס' 1: משיכת המידע הנכון מהזיכרון של האפליקציה
         SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
         currentAdminType = prefs.getInt("userType", 2);
         currentAdminId = prefs.getString("userId", "");
@@ -66,6 +65,9 @@ public class ManageClassesActivity extends BaseMenuActivity {
 
         initViews();
         setupFilters();
+
+        // ✨ התיקון בהשראת ManageUsersActivity: טוענים את השכבות מיד ב-onCreate באופן עצמאי!
+        loadGradesData();
 
         if (currentAdminType == 3) {
             spinnerSchoolSelectClasses.setVisibility(View.VISIBLE);
@@ -150,12 +152,10 @@ public class ManageClassesActivity extends BaseMenuActivity {
             schoolNames.clear();
             schoolIds.clear();
 
-            // ✨ החזרת האופציה של בחירת "כל בתי הספר"
             schoolNames.add("All Schools");
             schoolIds.add("");
 
             for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
-                // ✨ התיקון הקריטי מס' 2: שימוש ב-displayName
                 String sName = document.getString("displayName") != null ? document.getString("displayName") : document.getId();
                 schoolNames.add(sName);
                 schoolIds.add(document.getId());
@@ -173,7 +173,8 @@ public class ManageClassesActivity extends BaseMenuActivity {
                     } else {
                         selectedSchoolRef = null;
                     }
-                    loadGradesAndClasses();
+                    // ✨ קורא רק לטעינת כיתות, השכבות כבר קיימות!
+                    loadClassesData();
                 }
                 @Override
                 public void onNothingSelected(AdapterView<?> parent) {}
@@ -184,41 +185,64 @@ public class ManageClassesActivity extends BaseMenuActivity {
     private void loadAdminSchoolAndData() {
         db.collection("users").document(currentAdminId).get().addOnSuccessListener(documentSnapshot -> {
             if (documentSnapshot.exists()) {
-                selectedSchoolRef = documentSnapshot.getDocumentReference("school");
+                selectedSchoolRef = documentSnapshot.getDocumentReference("schoolRef");
                 if (selectedSchoolRef != null) {
-                    loadGradesAndClasses();
+                    // ✨ קורא רק לטעינת כיתות
+                    loadClassesData();
                 }
             }
         });
     }
 
-    private void loadGradesAndClasses() {
-        if (selectedSchoolRef == null) {
-            gradeMap.clear();
-            setupGradeSpinner(new ArrayList<>());
-            loadClassesData();
-            return;
-        }
+    private int extractGradeNumber(String name) {
+        if (name == null) return 9999;
+        String numStr = name.replaceAll("\\D+", "");
+        if (numStr.isEmpty()) return 9999;
+        return Integer.parseInt(numStr);
+    }
 
-        db.collection("grades").whereEqualTo("school", selectedSchoolRef).get()
+    // ✨ הפונקציה החדשה והעצמאית לטעינת שכבות (בול כמו ב-ManageUsersActivity)
+    private void loadGradesData() {
+        db.collection("grades").get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     gradeMap.clear();
-                    List<String> currentSchoolGrades = new ArrayList<>();
 
+                    List<QueryDocumentSnapshot> sortedGrades = new ArrayList<>();
                     for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        sortedGrades.add(doc);
+                    }
+
+                    // מיון זהה לחלוטין לקובץ המשתמשים שעובד לך
+                    java.util.Collections.sort(sortedGrades, (d1, d2) -> {
+                        String n1 = d1.getString("displayName");
+                        if (n1 == null) n1 = d1.getId();
+                        String n2 = d2.getString("displayName");
+                        if (n2 == null) n2 = d2.getId();
+
+                        int num1 = extractGradeNumber(n1);
+                        int num2 = extractGradeNumber(n2);
+
+                        if (num1 != num2) {
+                            return Integer.compare(num1, num2);
+                        }
+                        return n1.compareTo(n2);
+                    });
+
+                    List<String> currentSchoolGrades = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : sortedGrades) {
                         String gradeId = doc.getId();
-                        // ✨ התיקון הקריטי מס' 2: שימוש ב-displayName גם לשכבות
                         String gradeName = doc.getString("displayName") != null ? doc.getString("displayName") : doc.getId();
+
                         gradeMap.put(gradeId, gradeName);
                         currentSchoolGrades.add(gradeName);
                     }
 
                     setupGradeSpinner(currentSchoolGrades);
-                    loadClassesData();
                 });
     }
 
     private void loadClassesData() {
+        // ✨ התיקון כאן: שינינו מ-schoolRef ל-school לפי הדאטהבייס שלך!
         Query classesQuery = (selectedSchoolRef != null) ?
                 db.collection("classes").whereEqualTo("school", selectedSchoolRef) :
                 db.collection("classes");
@@ -262,9 +286,8 @@ public class ManageClassesActivity extends BaseMenuActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (selectedSchoolRef != null) {
-            loadGradesAndClasses();
-        }
+        // ✨ רענון אוטומטי של רשימת הכיתות
+        loadClassesData();
     }
 
     @Override

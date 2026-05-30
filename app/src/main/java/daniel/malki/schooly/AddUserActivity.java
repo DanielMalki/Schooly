@@ -263,6 +263,7 @@ public class AddUserActivity extends BaseMenuActivity {
         userData.put("tz", tz);
         userData.put("firstName", firstName);
         userData.put("lastName", lastName);
+        userData.put("name", firstName + " " + lastName);
         String middleName = etMiddleName.getText().toString().trim();
         if (!middleName.isEmpty()) userData.put("middleName", middleName);
         userData.put("email", email);
@@ -287,14 +288,28 @@ public class AddUserActivity extends BaseMenuActivity {
         }
 
         btnSaveUser.setEnabled(false);
-        db.collection("users").add(userData)
-                .addOnSuccessListener(documentReference -> {
-                    Toast.makeText(AddUserActivity.this, "User created successfully! 🎉", Toast.LENGTH_LONG).show();
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(AddUserActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    btnSaveUser.setEnabled(true);
-                });
+
+        // ✨ שלב א': בדיקה אם המשתמש כבר קיים לפי תעודת הזהות (TZ)
+        db.collection("users").document(tz).get().addOnSuccessListener(documentSnapshot -> {
+            if (documentSnapshot.exists()) {
+                // המשתמש כבר קיים - חוסמים את השמירה!
+                Toast.makeText(AddUserActivity.this, "A user with this ID (TZ) already exists!", Toast.LENGTH_LONG).show();
+                btnSaveUser.setEnabled(true); // מדליקים את הכפתור מחדש כדי לאפשר תיקון
+            } else {
+                // ✨ שלב ב': המשתמש לא קיים, שומרים אותו בעזרת set כשתעודת הזהות היא מפתח המסמך
+                db.collection("users").document(tz).set(userData)
+                        .addOnSuccessListener(aVoid -> {
+                            Toast.makeText(AddUserActivity.this, "User created successfully! 🎉", Toast.LENGTH_LONG).show();
+                            finish();
+                        })
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(AddUserActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            btnSaveUser.setEnabled(true);
+                        });
+            }
+        }).addOnFailureListener(e -> {
+            Toast.makeText(this, "Error checking database: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            btnSaveUser.setEnabled(true);
+        });
     }
 }
