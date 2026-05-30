@@ -12,11 +12,11 @@ import android.util.Patterns;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,6 +36,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,588 +45,299 @@ public class UserDetailActivity extends BaseMenuActivity {
 
     private ImageView imgDetailAvatar;
     private ImageButton btnEditAvatar;
-    private EditText etTz, etFirstName, etLastName, etMiddleName, etNewEmail;
-    private Spinner spinnerRole;
-    private Button btnSaveUserDetails, btnChangePasswordPlaceholder, btnDeleteUser; // ✨ הוספנו את btnDeleteUser
-
-    // רכיבי בית ספר
-    private EditText etSchoolLocked;
-    private Spinner spinnerSchoolSelect;
-    private ImageButton btnQuickAddSchool;
+    private EditText etTz, etFirstName, etMiddleName, etLastName, etNewEmail;
+    private Spinner spinnerRole, spinnerSchoolSelect;
     private TextView tvSchoolTitle;
-    private View viewSchoolDivider;
+    private EditText etSchoolLocked;
 
+    // רכיבי התיכון המעוצבים
+    private AutoCompleteTextView autoCompleteSchool;
+    private com.google.android.material.textfield.TextInputLayout layoutSchoolSelect;
     private ArrayList<String> schoolNames = new ArrayList<>();
-    private ArrayList<String> schoolIds = new ArrayList<>();
-    private DocumentReference selectedSchool;
+    private ArrayList<DocumentReference> schoolRefs = new ArrayList<>();
+    private DocumentReference selectedSchoolRef;
 
-    // רכיבי תלמיד
-    private LinearLayout layoutStudentFields;
-    private Spinner spinnerHomeroom, spinnerMathGroup, spinnerEnglishGroup, spinnerSportsGroup, spinnerMajor1Group, spinnerMajor2Group;
-    private TextView tvWarningHomeroom, tvWarningMath, tvWarningEnglish, tvWarningSports;
-
-    // רכיבי מורה
-    private LinearLayout layoutTeacherFields;
-    private LinearLayout layoutSelectedSubjectsList;
-    private ImageButton btnQuickAddSubject;
-    private TextView tvSelectSubjects;
+    private ImageButton btnQuickAddSchool;
+    private View viewSchoolDivider;
+    private Button btnSaveUserDetails, btnDeleteUser, btnChangePasswordPlaceholder;
 
     private FirebaseFirestore db;
     private String selectedUserId;
+    private int userTypeInt = 0; // 0=Student, 1=Teacher, 2=SchoolAdmin, 3=SchoolyAdmin
 
-    private byte[] imageBytesBlob = null;
-    private boolean shouldDeletePicture = false;
+    private EditStudentFragment editStudentFragment;
+    private EditTeacherFragment editTeacherFragment;
 
-    private int currentAdminType;
-    private String currentAdminId;
-    private int targetUserType;
+    private ArrayList<String> roleNames = new ArrayList<>();
+    private Map<String, Object> loadedClassesMap = new HashMap<>();
+    private List<DocumentReference> loadedSubjectsList = new ArrayList<>();
 
-    private ArrayList<Integer> availableRoleIds = new ArrayList<>();
+    private Bitmap selectedBitmap = null;
 
-    // רשימות נתונים
-    private ArrayList<String> subjectNames = new ArrayList<>();
-    private ArrayList<String> subjectIds = new ArrayList<>();
-    private boolean[] checkedSubjectsArray;
-    private ArrayList<String> chosenSubjectIds = new ArrayList<>();
-
-    private ArrayList<String> homeroomNames = new ArrayList<>(), homeroomIds = new ArrayList<>();
-    private ArrayList<String> mathNames = new ArrayList<>(), mathIds = new ArrayList<>();
-    private ArrayList<String> englishNames = new ArrayList<>(), englishIds = new ArrayList<>();
-    private ArrayList<String> sportsNames = new ArrayList<>(), sportsIds = new ArrayList<>();
-    private ArrayList<String> majorNames = new ArrayList<>(), majorIds = new ArrayList<>();
-
-    private final ActivityResultLauncher<Intent> galleryLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
+    private final ActivityResultLauncher<Intent> pickImageLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    Uri selectedImageUri = result.getData().getData();
-                    imgDetailAvatar.setImageURI(selectedImageUri);
-                    try {
-                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
-                        prepareImageBlob(bitmap);
-                    } catch (IOException e) {
-                        Toast.makeText(this, "Failed to read image", Toast.LENGTH_SHORT).show();
+                    Uri imageUri = result.getData().getData();
+                    if (imageUri != null) {
+                        try {
+                            InputStream is = getContentResolver().openInputStream(imageUri);
+                            selectedBitmap = BitmapFactory.decodeStream(is);
+                            imgDetailAvatar.setImageBitmap(selectedBitmap);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
-            }
-    );
-
-    private final ActivityResultLauncher<Void> cameraLauncher = registerForActivityResult(
-            new ActivityResultContracts.TakePicturePreview(),
-            bitmap -> {
-                if (bitmap != null) {
-                    imgDetailAvatar.setImageBitmap(bitmap);
-                    prepareImageBlob(bitmap);
-                }
-            }
-    );
+            });
 
     @Override
-    protected int getLayoutResourceId() { return R.layout.activity_user_detail; }
-
-    @Override
-    protected int[] getAllowedUserTypes() { return new int[]{2, 3}; }
+    protected int getLayoutResourceId() {
+        return R.layout.activity_user_detail;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         db = FirebaseFirestore.getInstance();
-        selectedUserId = getIntent().getStringExtra("selectedUserId");
+        selectedUserId = getIntent().getStringExtra("userId");
 
-        imgDetailAvatar = findViewById(R.id.imgDetailAvatar);
-        btnEditAvatar = findViewById(R.id.btnEditAvatar);
-        etTz = findViewById(R.id.etNewTz);
-        etFirstName = findViewById(R.id.etFirstName);
-        etLastName = findViewById(R.id.etLastName);
-        etMiddleName = findViewById(R.id.etMiddleName);
-        etNewEmail = findViewById(R.id.etNewEmail);
-        spinnerRole = findViewById(R.id.spinnerRole);
-        btnSaveUserDetails = findViewById(R.id.btnSaveUserDetails);
-        btnDeleteUser = findViewById(R.id.btnDeleteUser); // ✨
-        btnChangePasswordPlaceholder = findViewById(R.id.btnChangePasswordPlaceholder);
-
-        etSchoolLocked = findViewById(R.id.etSchoolLocked);
-        spinnerSchoolSelect = findViewById(R.id.spinnerSchoolSelect);
-        btnQuickAddSchool = findViewById(R.id.btnQuickAddSchool);
-        tvSchoolTitle = findViewById(R.id.tvSchoolTitle);
-        viewSchoolDivider = findViewById(R.id.viewSchoolDivider);
-
-        layoutStudentFields = findViewById(R.id.layoutStudentFields);
-        spinnerHomeroom = findViewById(R.id.spinnerHomeroom);
-        spinnerMathGroup = findViewById(R.id.spinnerMathGroup);
-        spinnerEnglishGroup = findViewById(R.id.spinnerEnglishGroup);
-        spinnerSportsGroup = findViewById(R.id.spinnerSportsGroup);
-        spinnerMajor1Group = findViewById(R.id.spinnerMajor1Group);
-        spinnerMajor2Group = findViewById(R.id.spinnerMajor2Group);
-
-        tvWarningHomeroom = findViewById(R.id.tvWarningHomeroom);
-        tvWarningMath = findViewById(R.id.tvWarningMath);
-        tvWarningEnglish = findViewById(R.id.tvWarningEnglish);
-        tvWarningSports = findViewById(R.id.tvWarningSports);
-
-        layoutTeacherFields = findViewById(R.id.layoutTeacherFields);
-        layoutSelectedSubjectsList = findViewById(R.id.layoutSelectedSubjectsList);
-        tvSelectSubjects = findViewById(R.id.tvSelectSubjects);
-        btnQuickAddSubject = findViewById(R.id.btnQuickAddSubject);
-
-        AdapterView.OnItemSelectedListener warningListener = new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                checkMandatoryClassesWarnings();
-            }
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        };
-        spinnerHomeroom.setOnItemSelectedListener(warningListener);
-        spinnerMathGroup.setOnItemSelectedListener(warningListener);
-        spinnerEnglishGroup.setOnItemSelectedListener(warningListener);
-        spinnerSportsGroup.setOnItemSelectedListener(warningListener);
-
-        SharedPreferences prefs = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
-        currentAdminType = prefs.getInt("userType", 2);
-        currentAdminId = prefs.getString("userId", "");
-
-        View.OnClickListener avatarClickListener = v -> showImageSourceDialog();
-        btnEditAvatar.setOnClickListener(avatarClickListener);
-        imgDetailAvatar.setOnClickListener(avatarClickListener);
-
-        btnChangePasswordPlaceholder.setOnClickListener(v ->
-                Toast.makeText(this, "Password update coming soon!", Toast.LENGTH_SHORT).show());
-
-        btnSaveUserDetails.setOnClickListener(v -> saveUserEditsToDatabase());
-        btnDeleteUser.setOnClickListener(v -> showDeleteConfirmationDialog()); // ✨ מאזין ללחיצת מחיקה
-
-        loadSubjectsDataAndUser();
-    }
-
-    private void setupRoleSpinnerStructure(int targetType) {
-        ArrayList<String> rolesToDisplay = new ArrayList<>();
-        availableRoleIds.clear();
-
-        if (targetType == 0) {
-            rolesToDisplay.add("Student");
-            availableRoleIds.add(0);
-            spinnerRole.setEnabled(false);
-        } else if (targetType == 1 || targetType == 2) {
-            rolesToDisplay.add("Teacher");
-            availableRoleIds.add(1);
-            rolesToDisplay.add("School Admin");
-            availableRoleIds.add(2);
-            spinnerRole.setEnabled(true);
-        } else if (targetType == 3) {
-            rolesToDisplay.add("Schooly Admin");
-            availableRoleIds.add(3);
-            spinnerRole.setEnabled(false);
-        }
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, rolesToDisplay);
-        spinnerRole.setAdapter(adapter);
-
-        int positionToSelect = availableRoleIds.indexOf(targetType);
-        if (positionToSelect >= 0) {
-            spinnerRole.setSelection(positionToSelect);
-        }
-    }
-
-    private void showImageSourceDialog() {
-        String[] options = {"Open Camera 📷", "Choose from Gallery 🖼️", "Remove Picture 🗑️", "Cancel ❌"};
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Update User Profile Picture");
-        builder.setItems(options, (dialog, which) -> {
-            if (which == 0) cameraLauncher.launch(null);
-            else if (which == 1) {
-                Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-                galleryLauncher.launch(intent);
-            } else if (which == 2) {
-                removeProfilePictureFromView();
-            } else dialog.dismiss();
-        });
-        builder.show();
-    }
-
-    private void removeProfilePictureFromView() {
-        imageBytesBlob = null;
-        shouldDeletePicture = true;
-        Glide.with(this).clear(imgDetailAvatar);
-        imgDetailAvatar.setImageResource(android.R.drawable.sym_def_app_icon);
-        Toast.makeText(this, "Picture removed from preview. Don't forget to Save!", Toast.LENGTH_SHORT).show();
-    }
-
-    private void prepareImageBlob(Bitmap originalBitmap) {
-        shouldDeletePicture = false;
-        int maxWidth = 400;
-        int maxHeight = 400;
-        float scale = Math.min(((float) maxWidth / originalBitmap.getWidth()), ((float) maxHeight / originalBitmap.getHeight()));
-        Bitmap resizedBitmap = Bitmap.createScaledBitmap(originalBitmap, (int) (originalBitmap.getWidth() * scale), (int) (originalBitmap.getHeight() * scale), true);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
-        imageBytesBlob = baos.toByteArray();
-    }
-
-    private void loadSubjectsDataAndUser() {
-        db.collection("subjects").get().addOnSuccessListener(queryDocumentSnapshots -> {
-            subjectNames.clear(); subjectIds.clear();
-            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                subjectIds.add(doc.getId());
-                subjectNames.add(doc.contains("displayName") ? doc.getString("displayName") : doc.getId());
-            }
-            checkedSubjectsArray = new boolean[subjectNames.size()];
-            loadClassesDataAndUser();
-        });
-    }
-
-    private void loadClassesDataAndUser() {
-        db.collection("classes").get().addOnSuccessListener(queryDocumentSnapshots -> {
-            initListWithPlaceholder(homeroomNames, homeroomIds, "Select Homeroom Class *");
-            initListWithPlaceholder(mathNames, mathIds, "Select Math Group *");
-            initListWithPlaceholder(englishNames, englishIds, "Select English Group *");
-            initListWithPlaceholder(sportsNames, sportsIds, "Select Sports Group *");
-            initListWithPlaceholder(majorNames, majorIds, "Select Major Group (Optional)");
-
-            for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
-                String classId = doc.getId();
-                String className = doc.contains("displayName") ? doc.getString("displayName") : doc.getString("name");
-                String type = doc.getString("type");
-                if (type == null) continue;
-
-                switch (type) {
-                    case "homeroom": homeroomNames.add(className); homeroomIds.add(classId); break;
-                    case "math": mathNames.add(className); mathIds.add(classId); break;
-                    case "english": englishNames.add(className); englishIds.add(classId); break;
-                    case "sports": sportsNames.add(className); sportsIds.add(classId); break;
-                    case "major": majorNames.add(className); majorIds.add(classId); break;
-                }
-            }
-
-            spinnerHomeroom.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, homeroomNames));
-            spinnerMathGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, mathNames));
-            spinnerEnglishGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, englishNames));
-            spinnerSportsGroup.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, sportsNames));
-            spinnerMajor1Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
-            spinnerMajor2Group.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, majorNames));
-
-            if (selectedUserId != null) {
-                fetchTargetUserFullProfile();
-            }
-        });
-    }
-
-    private void initListWithPlaceholder(ArrayList<String> names, ArrayList<String> ids, String placeholder) {
-        names.clear(); ids.clear(); names.add(placeholder); ids.add("");
-    }
-
-    private void checkMandatoryClassesWarnings() {
-        if (targetUserType != 0) return;
-
-        if (tvWarningHomeroom != null) tvWarningHomeroom.setVisibility(spinnerHomeroom.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
-        if (tvWarningMath != null) tvWarningMath.setVisibility(spinnerMathGroup.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
-        if (tvWarningEnglish != null) tvWarningEnglish.setVisibility(spinnerEnglishGroup.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
-        if (tvWarningSports != null) tvWarningSports.setVisibility(spinnerSportsGroup.getSelectedItemPosition() <= 0 ? View.VISIBLE : View.GONE);
-    }
-
-    private void fetchTargetUserFullProfile() {
-        db.collection("users").document(selectedUserId).get().addOnSuccessListener(doc -> {
-            if (!doc.exists()) return;
-
-            Long typeLong = doc.getLong("type");
-            targetUserType = (typeLong != null) ? typeLong.intValue() : 0;
-
-            setupRoleSpinnerStructure(targetUserType);
-
-            etTz.setText(selectedUserId);
-            etFirstName.setText(doc.getString("firstName"));
-            etLastName.setText(doc.getString("lastName"));
-            etMiddleName.setText(doc.getString("middleName") != null ? doc.getString("middleName") : "");
-            etNewEmail.setText(doc.getString("email"));
-
-            if (doc.getBlob("profileImageBlob") != null) {
-                byte[] loadedBytes = doc.getBlob("profileImageBlob").toBytes();
-                Glide.with(this).load(loadedBytes).circleCrop().into(imgDetailAvatar);
-            }
-
-            selectedSchool = doc.getDocumentReference("school");
-            handleSchoolLayoutRendering();
-
-            if (targetUserType == 0) {
-                layoutStudentFields.setVisibility(View.VISIBLE);
-                layoutTeacherFields.setVisibility(View.GONE);
-
-                Object classesObj = doc.get("classes");
-                if (classesObj instanceof Map) {
-                    Map<String, Object> classesMap = (Map<String, Object>) classesObj;
-                    for (Map.Entry<String, Object> entry : classesMap.entrySet()) {
-                        if (entry.getValue() instanceof DocumentReference) {
-                            setTargetSpinnerSelection(((DocumentReference) entry.getValue()).getId());
-                        }
-                    }
-                } else if (classesObj instanceof List) {
-                    List<DocumentReference> classRefs = (List<DocumentReference>) classesObj;
-                    for (DocumentReference ref : classRefs) {
-                        if (ref != null) {
-                            setTargetSpinnerSelection(ref.getId());
-                        }
-                    }
-                }
-
-                checkMandatoryClassesWarnings();
-
-            } else if (targetUserType == 1 || targetUserType == 2) {
-                layoutStudentFields.setVisibility(View.GONE);
-                layoutTeacherFields.setVisibility(View.VISIBLE);
-                List<DocumentReference> subRefs = (List<DocumentReference>) doc.get("teachableSubjects");
-                if (subRefs != null) {
-                    for (DocumentReference ref : subRefs) {
-                        int idx = subjectIds.indexOf(ref.getId());
-                        if (idx >= 0) {
-                            checkedSubjectsArray[idx] = true;
-                            chosenSubjectIds.add(ref.getId());
-                        }
-                    }
-                }
-                updateSubjectsTextView();
-            }
-
-            applySecurityRules();
-        });
-    }
-
-    private void handleSchoolLayoutRendering() {
-        if (targetUserType == 3) {
-            setSchoolLayoutVisibility(View.GONE, View.GONE, View.GONE);
+        if (selectedUserId == null) {
+            Toast.makeText(this, "No user ID provided", Toast.LENGTH_SHORT).show();
+            finish();
             return;
         }
 
-        if (currentAdminType == 2) {
-            setSchoolLayoutVisibility(View.VISIBLE, View.GONE, View.GONE);
-            if (selectedSchool != null) {
-                selectedSchool.get().addOnSuccessListener(sDoc -> etSchoolLocked.setText(sDoc.getString("displayName")));
+        initViews();
+        loadRoles();
+    }
+
+    private void initViews() {
+        imgDetailAvatar = findViewById(R.id.imgDetailAvatar);
+        btnEditAvatar = findViewById(R.id.btnEditAvatar);
+        etTz = findViewById(R.id.etTz);
+        etFirstName = findViewById(R.id.etFirstName);
+        etMiddleName = findViewById(R.id.etMiddleName);
+        etLastName = findViewById(R.id.etLastName);
+        etNewEmail = findViewById(R.id.etNewEmail);
+        spinnerRole = findViewById(R.id.spinnerRole);
+        spinnerSchoolSelect = findViewById(R.id.spinnerSchoolSelect);
+        tvSchoolTitle = findViewById(R.id.tvSchoolTitle);
+        etSchoolLocked = findViewById(R.id.etSchoolLocked);
+        btnQuickAddSchool = findViewById(R.id.btnQuickAddSchool);
+        viewSchoolDivider = findViewById(R.id.viewSchoolDivider);
+        btnSaveUserDetails = findViewById(R.id.btnSaveUserDetails);
+        btnDeleteUser = findViewById(R.id.btnDeleteUser);
+        btnChangePasswordPlaceholder = findViewById(R.id.btnChangePasswordPlaceholder);
+
+        autoCompleteSchool = findViewById(R.id.autoCompleteSchool);
+        layoutSchoolSelect = findViewById(R.id.layoutSchoolSelect);
+
+        btnEditAvatar.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            pickImageLauncher.launch(intent);
+        });
+
+        btnSaveUserDetails.setOnClickListener(v -> saveUserData());
+        btnDeleteUser.setOnClickListener(v -> deleteUser());
+    }
+
+    private void loadRoles() {
+        roleNames.clear();
+        roleNames.add("Student");
+        roleNames.add("Teacher");
+        roleNames.add("School Admin");
+        roleNames.add("Schooly Admin");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, roleNames);
+        spinnerRole.setAdapter(adapter);
+        spinnerRole.setEnabled(false);
+
+        loadSchools();
+    }
+
+    private void loadSchools() {
+        db.collection("schools").get().addOnSuccessListener(snapshots -> {
+            schoolNames.clear();
+            schoolRefs.clear();
+            for (QueryDocumentSnapshot doc : snapshots) {
+                String name = doc.getString("name");
+                if (name == null) name = doc.getString("displayName");
+                if (name == null) name = doc.getId();
+
+                schoolNames.add(name);
+                schoolRefs.add(doc.getReference());
             }
-        } else if (currentAdminType == 3) {
-            setSchoolLayoutVisibility(View.GONE, View.VISIBLE, View.VISIBLE);
-            db.collection("schools").get().addOnSuccessListener(snapshots -> {
-                schoolNames.clear(); schoolIds.clear();
-                for (QueryDocumentSnapshot d : snapshots) {
-                    schoolIds.add(d.getId());
-                    schoolNames.add(d.getString("displayName") != null ? d.getString("displayName") : d.getId());
-                }
-                spinnerSchoolSelect.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, schoolNames));
-                if (selectedSchool != null) {
-                    int pos = schoolIds.indexOf(selectedSchool.getId());
-                    if (pos >= 0) spinnerSchoolSelect.setSelection(pos);
-                }
-                spinnerSchoolSelect.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                        selectedSchool = db.collection("schools").document(schoolIds.get(pos));
+            loadUserData();
+        });
+    }
+
+    private void loadUserData() {
+        db.collection("users").document(selectedUserId).get().addOnSuccessListener(doc -> {
+            if (!doc.exists()) return;
+
+            etTz.setText(doc.getId());
+            etFirstName.setText(doc.getString("firstName"));
+            etMiddleName.setText(doc.getString("middleName"));
+            etLastName.setText(doc.getString("lastName"));
+            etNewEmail.setText(doc.getString("email"));
+
+            Long typeLong = doc.getLong("type");
+            userTypeInt = (typeLong != null) ? typeLong.intValue() : 0;
+            if (userTypeInt >= 0 && userTypeInt < roleNames.size()) {
+                spinnerRole.setSelection(userTypeInt);
+            }
+
+            selectedSchoolRef = doc.getDocumentReference("school");
+            if (selectedSchoolRef == null) {
+                selectedSchoolRef = doc.getDocumentReference("schoolRef");
+            }
+
+            SharedPreferences sp = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE);
+            int loggedInType = sp.getInt("userType", -1);
+
+            // בדיקה אם המשתמש המחובר הוא Schooly Admin (רמה 3)
+            if (loggedInType == 3) {
+                layoutSchoolSelect.setEnabled(true);
+
+                int initialPosition = 0;
+                if (selectedSchoolRef != null) {
+                    for (int i = 0; i < schoolRefs.size(); i++) {
+                        if (schoolRefs.get(i).getId().equals(selectedSchoolRef.getId())) {
+                            initialPosition = i;
+                            break;
+                        }
                     }
-                    @Override
-                    public void onNothingSelected(AdapterView<?> p) {}
+                }
+
+                ArrayAdapter<String> schoolAdapter = new ArrayAdapter<>(UserDetailActivity.this, android.R.layout.simple_spinner_dropdown_item, schoolNames);
+                autoCompleteSchool.setAdapter(schoolAdapter);
+                if (!schoolNames.isEmpty()) {
+                    autoCompleteSchool.setText(schoolNames.get(initialPosition), false);
+                }
+
+                // מאזין חכם שמחליף את הפרגמנט בצורה נקייה ובטוחה ללא קריסות
+                autoCompleteSchool.setOnItemClickListener((parent, view1, position, id) -> {
+                    selectedSchoolRef = schoolRefs.get(position);
+
+                    if (userTypeInt == 0) { // Student
+                        // מייצרים מופע חדש של הפרגמנט עם רפרנס בית הספר המעודכן
+                        editStudentFragment = EditStudentFragment.newInstance(selectedSchoolRef, loadedClassesMap);
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.dynamicFieldsContainer, editStudentFragment)
+                                .commitAllowingStateLoss();
+                    }
                 });
-            });
-        }
-    }
 
-    private void setSchoolLayoutVisibility(int lockedVis, int selectVis, int quickAddVis) {
-        etSchoolLocked.setVisibility(lockedVis);
-        spinnerSchoolSelect.setVisibility(selectVis);
-        btnQuickAddSchool.setVisibility(quickAddVis);
-        int visibility = (lockedVis == View.GONE && selectVis == View.GONE) ? View.GONE : View.VISIBLE;
-        tvSchoolTitle.setVisibility(visibility);
-        viewSchoolDivider.setVisibility(visibility);
-    }
+            } else {
+                // נעול לצפייה בלבד עבור משתמשים אחרים
+                layoutSchoolSelect.setEnabled(false);
 
-    private void setTargetSpinnerSelection(String id) {
-        if (homeroomIds.contains(id)) spinnerHomeroom.setSelection(homeroomIds.indexOf(id));
-        else if (mathIds.contains(id)) spinnerMathGroup.setSelection(mathIds.indexOf(id));
-        else if (englishIds.contains(id)) spinnerEnglishGroup.setSelection(englishIds.indexOf(id));
-        else if (sportsIds.contains(id)) spinnerSportsGroup.setSelection(sportsIds.indexOf(id));
-        else if (majorIds.contains(id)) {
-            if (spinnerMajor1Group.getSelectedItemPosition() == 0) spinnerMajor1Group.setSelection(majorIds.indexOf(id));
-            else spinnerMajor2Group.setSelection(majorIds.indexOf(id));
-        }
-    }
-
-    private void updateSubjectsTextView() {
-        layoutSelectedSubjectsList.removeAllViews();
-        if (chosenSubjectIds.isEmpty()) {
-            tvSelectSubjects.setText("Select Teachable Subjects *");
-        } else {
-            tvSelectSubjects.setText(chosenSubjectIds.size() + " Subjects Selected:");
-            for (int i = 0; i < checkedSubjectsArray.length; i++) {
-                if (checkedSubjectsArray[i]) {
-                    TextView tv = new TextView(this);
-                    tv.setText("• " + subjectNames.get(i));
-                    tv.setTextSize(16.0f);
-                    tv.setPadding(0, 6, 0, 6);
-                    layoutSelectedSubjectsList.addView(tv);
+                if (selectedSchoolRef != null) {
+                    String displayName = selectedSchoolRef.getId();
+                    for (int i = 0; i < schoolRefs.size(); i++) {
+                        if (schoolRefs.get(i).getId().equals(selectedSchoolRef.getId())) {
+                            displayName = schoolNames.get(i);
+                            break;
+                        }
+                    }
+                    autoCompleteSchool.setText(displayName, false);
+                } else {
+                    autoCompleteSchool.setText("No School Assigned", false);
                 }
             }
-        }
-    }
 
-    private void applySecurityRules() {
-        boolean canEdit = false;
-        if (currentAdminType == 3 && targetUserType < 3) canEdit = true;
-        else if (currentAdminType == 2 && targetUserType < 2) canEdit = true;
-
-        etFirstName.setEnabled(canEdit);
-        etLastName.setEnabled(canEdit);
-        etMiddleName.setEnabled(canEdit);
-        etNewEmail.setEnabled(canEdit);
-
-        spinnerHomeroom.setEnabled(canEdit);
-        spinnerMathGroup.setEnabled(canEdit);
-        spinnerEnglishGroup.setEnabled(canEdit);
-        spinnerSportsGroup.setEnabled(canEdit);
-        spinnerMajor1Group.setEnabled(canEdit);
-        spinnerMajor2Group.setEnabled(canEdit);
-
-        tvSelectSubjects.setEnabled(canEdit);
-        btnQuickAddSubject.setEnabled(canEdit);
-        spinnerSchoolSelect.setEnabled(canEdit);
-        btnQuickAddSchool.setEnabled(canEdit);
-
-        if (canEdit) {
-            btnEditAvatar.setVisibility(View.VISIBLE);
-            btnSaveUserDetails.setVisibility(View.VISIBLE);
-            btnDeleteUser.setVisibility(View.VISIBLE); // ✨ הצגת כפתור מחיקה רק למנהל מורשה
-            tvSelectSubjects.setOnClickListener(v -> showSubjectsMultiChoiceDialog());
-            imgDetailAvatar.setClickable(true);
-        } else {
-            btnEditAvatar.setVisibility(View.GONE);
-            btnSaveUserDetails.setVisibility(View.GONE);
-            btnDeleteUser.setVisibility(View.GONE); // ✨ הסתרת כפתור מחיקה
-            imgDetailAvatar.setClickable(false);
-            Toast.makeText(this, "View-only mode", Toast.LENGTH_SHORT).show();
-        }
-
-        if (canEdit && (targetUserType == 1 || targetUserType == 2)) {
-            spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    int realRoleSelected = availableRoleIds.get(position);
-                    if (realRoleSelected == 1 || realRoleSelected == 2) {
-                        layoutStudentFields.setVisibility(View.GONE);
-                        layoutTeacherFields.setVisibility(View.VISIBLE);
-                    }
+            if (doc.contains("avatarBlob")) {
+                Blob blob = doc.getBlob("avatarBlob");
+                if (blob != null) {
+                    byte[] bytes = blob.toBytes();
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    imgDetailAvatar.setImageBitmap(bitmap);
                 }
-                @Override
-                public void onNothingSelected(AdapterView<?> parent) {}
-            });
-        }
+            }
+
+            // טעינה ראשונית של הפרגמנטים הדינמיים לפי סוג המשתמש
+            if (userTypeInt == 0) { // Student
+                Map<String, Object> classes = (Map<String, Object>) doc.get("classes");
+                if (classes != null) loadedClassesMap = classes;
+
+                editStudentFragment = EditStudentFragment.newInstance(selectedSchoolRef, loadedClassesMap);
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.dynamicFieldsContainer, editStudentFragment)
+                        .commitAllowingStateLoss();
+            } else if (userTypeInt == 1) { // Teacher
+                List<DocumentReference> subjects = (List<DocumentReference>) doc.get("teachableSubjects");
+                if (subjects != null) loadedSubjectsList = subjects;
+
+                editTeacherFragment = EditTeacherFragment.newInstance(loadedSubjectsList);
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.dynamicFieldsContainer, editTeacherFragment)
+                        .commitAllowingStateLoss();
+            }
+
+            if (loggedInType == 2 || loggedInType == 3) {
+                btnSaveUserDetails.setVisibility(View.VISIBLE);
+                btnDeleteUser.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
-    private void showSubjectsMultiChoiceDialog() {
-        String[] items = subjectNames.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Select Teachable Subjects")
-                .setMultiChoiceItems(items, checkedSubjectsArray, (dialog, which, isChecked) -> checkedSubjectsArray[which] = isChecked)
-                .setPositiveButton("OK", (dialog, which) -> {
-                    chosenSubjectIds.clear();
-                    for (int i = 0; i < checkedSubjectsArray.length; i++) {
-                        if (checkedSubjectsArray[i]) chosenSubjectIds.add(subjectIds.get(i));
-                    }
-                    updateSubjectsTextView();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    // ✨ חלונית אישור אבטחה לפני מחיקה
-    private void showDeleteConfirmationDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Delete User Profile ⚠️")
-                .setMessage("Are you sure you want to permanently delete this user? This action cannot be undone.")
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setPositiveButton("Yes, Delete", (dialog, which) -> deleteUserFromDatabase())
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    // ✨ מחיקת המשתמש בפועל מה-Firestore
-    private void deleteUserFromDatabase() {
-        db.collection("users").document(selectedUserId)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "User deleted successfully 🗑️", Toast.LENGTH_SHORT).show();
-                    setResult(RESULT_OK); // מודיע למסך הקודם לרענן את הרשימה
-                    finish(); // סוגר את המסך וחוזר חזרה
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Error deleting user: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
-    }
-
-    private void saveUserEditsToDatabase() {
+    private void saveUserData() {
         String fName = etFirstName.getText().toString().trim();
         String lName = etLastName.getText().toString().trim();
-        String mName = etMiddleName.getText().toString().trim();
         String email = etNewEmail.getText().toString().trim();
 
-        int finalRole = availableRoleIds.get(spinnerRole.getSelectedItemPosition());
-
         if (TextUtils.isEmpty(fName) || TextUtils.isEmpty(lName) || TextUtils.isEmpty(email)) {
-            Toast.makeText(this, "Please fill all mandatory fields (*)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Please fill all required fields (*)", Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (!isValidEmail(email)) {
-            Toast.makeText(this, "Invalid email format", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Invalid email address structure", Toast.LENGTH_SHORT).show();
             return;
         }
 
         Map<String, Object> updates = new HashMap<>();
         updates.put("firstName", fName);
+        updates.put("middleName", etMiddleName.getText().toString().trim());
         updates.put("lastName", lName);
-        updates.put("middleName", mName);
-        updates.put("name", fName + (mName.isEmpty() ? "" : " " + mName) + " " + lName);
         updates.put("email", email);
-        updates.put("type", finalRole);
+        updates.put("school", selectedSchoolRef);
 
-        if (finalRole != 3) {
-            updates.put("school", selectedSchool);
+        if (selectedBitmap != null) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            selectedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
+            updates.put("avatarBlob", Blob.fromBytes(baos.toByteArray()));
         }
 
-        if (shouldDeletePicture) {
-            updates.put("profileImageBlob", FieldValue.delete());
-        } else if (imageBytesBlob != null) {
-            updates.put("profileImageBlob", com.google.firebase.firestore.Blob.fromBytes(imageBytesBlob));
-        }
-
-        if (finalRole == 0) {
-            Map<String, Object> classRefsMap = new HashMap<>();
-
-            int homePos = spinnerHomeroom.getSelectedItemPosition();
-            if (homePos > 0) classRefsMap.put("homeroom", db.collection("classes").document(homeroomIds.get(homePos)));
-
-            int mathPos = spinnerMathGroup.getSelectedItemPosition();
-            if (mathPos > 0) classRefsMap.put("math", db.collection("classes").document(mathIds.get(mathPos)));
-
-            int engPos = spinnerEnglishGroup.getSelectedItemPosition();
-            if (engPos > 0) classRefsMap.put("english", db.collection("classes").document(englishIds.get(engPos)));
-
-            int sportsPos = spinnerSportsGroup.getSelectedItemPosition();
-            if (sportsPos > 0) classRefsMap.put("sports", db.collection("classes").document(sportsIds.get(sportsPos)));
-
-            int maj1Pos = spinnerMajor1Group.getSelectedItemPosition();
-            if (maj1Pos > 0) classRefsMap.put("major1", db.collection("classes").document(majorIds.get(maj1Pos)));
-
-            int maj2Pos = spinnerMajor2Group.getSelectedItemPosition();
-            if (maj2Pos > 0) classRefsMap.put("major2", db.collection("classes").document(majorIds.get(maj2Pos)));
-
-            updates.put("classes", classRefsMap);
-        } else {
-            ArrayList<DocumentReference> subRefs = new ArrayList<>();
-            for (String subId : chosenSubjectIds) subRefs.add(db.collection("subjects").document(subId));
-            updates.put("teachableSubjects", subRefs);
+        if (userTypeInt == 0 && editStudentFragment != null) {
+            updates.put("classes", editStudentFragment.getSelectedClassesMap());
+        } else if (userTypeInt == 1 && editTeacherFragment != null) {
+            updates.put("teachableSubjects", editTeacherFragment.getSelectedSubjectsRefs());
         }
 
         db.collection("users").document(selectedUserId).update(updates).addOnSuccessListener(aVoid -> {
             Toast.makeText(this, "User details updated successfully! 💾", Toast.LENGTH_SHORT).show();
             setResult(RESULT_OK);
             finish();
+        }).addOnFailureListener(e -> {
+            Toast.makeText(this, "Update failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void deleteUser() {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete User")
+                .setMessage("Are you sure you want to permanently delete this user profile?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    db.collection("users").document(selectedUserId).delete().addOnSuccessListener(aVoid -> {
+                        Toast.makeText(UserDetailActivity.this, "User has been deleted.", Toast.LENGTH_SHORT).show();
+                        setResult(RESULT_OK);
+                        finish();
+                    });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private boolean isValidEmail(String email) {

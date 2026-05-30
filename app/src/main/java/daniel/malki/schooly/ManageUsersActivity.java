@@ -112,7 +112,10 @@ public class ManageUsersActivity extends BaseMenuActivity {
         adapter.setOnItemClickListener(selectedUser -> {
             if (selectedUser != null) {
                 Intent intent = new Intent(ManageUsersActivity.this, UserDetailActivity.class);
-                intent.putExtra("USER_ID", selectedUser.getUserId());
+
+                // ✨ התיקון: משנים מ-"USER_ID" ל-"userId" כדי שיתאים בדיוק למסך הבא!
+                intent.putExtra("userId", selectedUser.getUserId());
+
                 if (selectedSchoolRef != null) {
                     intent.putExtra("SCHOOL_ID", selectedSchoolRef.getId());
                 }

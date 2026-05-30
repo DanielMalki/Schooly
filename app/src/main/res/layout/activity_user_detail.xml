@@ -3,302 +3,268 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="20dp"
     android:background="#F5F5F5">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@android:color/white"
-        android:padding="20dp"
-        android:elevation="4dp">
+        android:padding="16dp">
 
-        <TextView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="User Profile &amp; Settings"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="#1A237E"
-            android:layout_marginBottom="15dp"
-            android:gravity="center"/>
-
-        <RelativeLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginBottom="20dp">
-
-            <ImageView
-                android:id="@+id/imgDetailAvatar"
-                android:layout_width="110dp"
-                android:layout_height="110dp"
-                android:src="@android:drawable/sym_def_app_icon"
-                android:background="@android:color/transparent" />
-
-            <ImageButton
-                android:id="@+id/btnEditAvatar"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_alignEnd="@id/imgDetailAvatar"
-                android:layout_alignBottom="@id/imgDetailAvatar"
-                android:backgroundTint="#1A237E"
-                android:src="@android:drawable/ic_menu_camera"
-                app:tint="@android:color/white"
-                android:background="@android:drawable/editbox_dropdown_light_frame"
-                android:visibility="gone" />
-        </RelativeLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="1. User Role (Cannot be changed):"
-            android:textStyle="bold"
-            android:layout_marginBottom="5dp"
-            android:textColor="#333333"/>
-
-        <Spinner
-            android:id="@+id/spinnerRole"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginBottom="20dp"
-            android:background="#EEEEEE"
-            android:enabled="false"/>
-
-        <TextView
-            android:id="@+id/tvSchoolTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="School Assignment:"
-            android:textStyle="bold"
-            android:layout_marginBottom="5dp"
-            android:textColor="#333333"/>
-
-        <EditText
-            android:id="@+id/etSchoolLocked"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#E0E0E0"
-            android:focusable="false"
-            android:clickable="false"
-            android:padding="10dp"
-            android:textColor="#555555"
-            android:visibility="gone"
-            android:layout_marginBottom="20dp"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="20dp">
-
-            <Spinner
-                android:id="@+id/spinnerSchoolSelect"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="50dp"
-                android:background="#EEEEEE"
-                android:visibility="gone"/>
-
-            <ImageButton
-                android:id="@+id/btnQuickAddSchool"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:layout_marginStart="8dp"
-                android:src="@android:drawable/ic_input_add"
-                android:backgroundTint="#1A237E"
-                app:tint="@android:color/white"
-                android:visibility="gone"/>
-        </LinearLayout>
-
-        <View
-            android:id="@+id/viewSchoolDivider"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#CCCCCC"
-            android:layout_marginBottom="20dp"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="2. Personal Information:"
-            android:textStyle="bold"
-            android:layout_marginBottom="10dp"
-            android:textColor="#333333"/>
-
-        <EditText
-            android:id="@+id/etNewTz"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:hint="ID Number (T.Z) *"
-            android:inputType="number"
-            android:layout_marginBottom="15dp"
-            android:background="#E0E0E0"
-            android:enabled="false"
-            android:padding="10dp"/>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="15dp">
-
-            <EditText
-                android:id="@+id/etFirstName"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="50dp"
-                android:hint="First Name *"
-                android:inputType="textPersonName"
-                android:background="#EEEEEE"
-                android:padding="10dp"
-                android:layout_marginEnd="5dp"/>
-
-            <EditText
-                android:id="@+id/etLastName"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="50dp"
-                android:hint="Last Name *"
-                android:inputType="textPersonName"
-                android:background="#EEEEEE"
-                android:padding="10dp"
-                android:layout_marginStart="5dp"/>
-        </LinearLayout>
-
-        <EditText
-            android:id="@+id/etMiddleName"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:hint="Middle Name (Optional)"
-            android:inputType="textPersonName"
-            android:layout_marginBottom="15dp"
-            android:background="#EEEEEE"
-            android:padding="10dp"/>
-
-        <EditText
-            android:id="@+id/etNewEmail"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:hint="Email Address *"
-            android:inputType="textEmailAddress"
-            android:layout_marginBottom="15dp"
-            android:background="#EEEEEE"
-            android:padding="10dp"/>
-
-        <LinearLayout
-            android:id="@+id/layoutStudentFields"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="3. Learning Groups Assignment:"
-                android:textStyle="bold"
-                android:layout_marginBottom="10dp"
-                android:textColor="#333333"/>
-
-            <Spinner android:id="@+id/spinnerHomeroom" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
-            <TextView android:id="@+id/tvWarningHomeroom" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing Homeroom Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
-
-            <Spinner android:id="@+id/spinnerMathGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
-            <TextView android:id="@+id/tvWarningMath" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing Math Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
-
-            <Spinner android:id="@+id/spinnerEnglishGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
-            <TextView android:id="@+id/tvWarningEnglish" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing English Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
-
-            <Spinner android:id="@+id/spinnerSportsGroup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="5dp" android:background="#EEEEEE"/>
-            <TextView android:id="@+id/tvWarningSports" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Missing Sports Class" android:textColor="#F44336" android:textSize="12sp" android:visibility="gone" android:layout_marginBottom="15dp"/>
-
-            <Spinner android:id="@+id/spinnerMajor1Group" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="15dp" android:background="#EEEEEE"/>
-            <Spinner android:id="@+id/spinnerMajor2Group" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginBottom="20dp" android:background="#EEEEEE"/>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/layoutTeacherFields"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="3. Professional Expertise:"
-                android:textStyle="bold"
-                android:layout_marginBottom="10dp"
-                android:textColor="#333333"/>
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@android:color/white">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="10dp">
-
-                <TextView
-                    android:id="@+id/tvSelectSubjects"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="50dp"
-                    android:text="Select Teachable Subjects *"
-                    android:gravity="center_vertical"
-                    android:background="#EEEEEE"
-                    android:padding="10dp"
-                    android:textColor="#666666"
-                    android:textStyle="bold"/>
-
-                <ImageButton
-                    android:id="@+id/btnQuickAddSubject"
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"
-                    android:layout_marginStart="8dp"
-                    android:src="@android:drawable/ic_input_add"
-                    android:backgroundTint="#1A237E"
-                    app:tint="@android:color/white"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/layoutSelectedSubjectsList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingStart="10dp"
-                android:layout_marginBottom="20dp"/>
-        </LinearLayout>
+                android:gravity="center"
+                android:padding="24dp">
+
+                <RelativeLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+                    <ImageView
+                        android:id="@+id/imgDetailAvatar"
+                        android:layout_width="100dp"
+                        android:layout_height="100dp"
+                        android:src="@android:drawable/sym_def_app_icon"
+                        android:background="@android:color/transparent"/>
+                    <ImageButton
+                        android:id="@+id/btnEditAvatar"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_alignEnd="@id/imgDetailAvatar"
+                        android:layout_alignBottom="@id/imgDetailAvatar"
+                        android:background="@android:color/holo_blue_dark"
+                        android:src="@android:drawable/ic_menu_camera"
+                        app:tint="@android:color/white"/>
+                </RelativeLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="User Profile Settings"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#1A237E"
+                    android:layout_marginTop="12dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@android:color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Personal Information"
+                    android:textStyle="bold"
+                    android:textColor="#1A237E"
+                    android:layout_marginBottom="16dp"/>
+
+                <EditText
+                    android:id="@+id/etTz"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:hint="ID / Tz (Locked)"
+                    android:inputType="text"
+                    android:enabled="false"
+                    android:layout_marginBottom="12dp"/>
+
+                <EditText
+                    android:id="@+id/etFirstName"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:hint="First Name *"
+                    android:inputType="textPersonName"
+                    android:layout_marginBottom="12dp"/>
+
+                <EditText
+                    android:id="@+id/etMiddleName"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:hint="Middle Name (Optional)"
+                    android:inputType="textPersonName"
+                    android:layout_marginBottom="12dp"/>
+
+                <EditText
+                    android:id="@+id/etLastName"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:hint="Last Name *"
+                    android:inputType="textPersonName"
+                    android:layout_marginBottom="12dp"/>
+
+                <EditText
+                    android:id="@+id/etNewEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:hint="Email Address *"
+                    android:inputType="textEmailAddress"
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="System Permission Role"
+                    android:textSize="12sp"
+                    android:textColor="#757575"
+                    android:layout_marginBottom="4dp"/>
+                <Spinner
+                    android:id="@+id/spinnerRole"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginBottom="16dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@android:color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tvSchoolTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Associated School Organization"
+                    android:textStyle="bold"
+                    android:textColor="#1A237E"
+                    android:layout_marginBottom="16dp"/>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layoutSchoolSelect"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Student's High School"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxStrokeColor="#1A237E"
+                    app:hintTextColor="#1A237E"
+                    android:layout_marginBottom="8dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteSchool"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:textSize="15sp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone">
+
+                    <EditText
+                        android:id="@+id/etSchoolLocked"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="50dp"
+                        android:hint="School Name"
+                        android:enabled="false"
+                        android:visibility="gone"/>
+
+                    <Spinner
+                        android:id="@+id/spinnerSchoolSelect"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="50dp"
+                        android:visibility="gone"/>
+
+                    <ImageButton
+                        android:id="@+id/btnQuickAddSchool"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:src="@android:drawable/ic_input_add"
+                        android:visibility="gone"/>
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/viewSchoolDivider"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E0E0E0"
+                    android:layout_marginTop="8dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@android:color/white">
+
+            <FrameLayout
+                android:id="@+id/dynamicFieldsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"/>
+        </com.google.android.material.card.MaterialCardView>
 
         <Button
             android:id="@+id/btnChangePasswordPlaceholder"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginBottom="10dp"
+            android:layout_height="55dp"
+            android:layout_marginBottom="12dp"
             android:backgroundTint="#9E9E9E"
             android:text="Change Password (Disabled)"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:textStyle="bold"/>
 
         <Button
             android:id="@+id/btnSaveUserDetails"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
+            android:layout_height="55dp"
+            android:layout_marginBottom="12dp"
             android:backgroundTint="#4CAF50"
             android:text="Save Changes"
-            android:visibility="gone"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:visibility="gone"/>
 
         <Button
             android:id="@+id/btnDeleteUser"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="10dp"
+            android:layout_height="55dp"
             android:backgroundTint="#D32F2F"
             android:text="Delete User 🗑️"
-            android:visibility="gone"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:visibility="gone"/>
 
     </LinearLayout>
 </ScrollView>
