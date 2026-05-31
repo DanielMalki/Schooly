@@ -13,7 +13,8 @@ import com.google.firebase.firestore.PersistentCacheSettings;
 
 public class AdminDashboardActivity extends BaseMenuActivity {
 
-    private MaterialCardView cardAddUser, cardAddClass, cardManageUsers, cardManageClasses, cardSchedule;
+    // עדכון שמות המשתנים שיתאימו בדיוק ל-XML החדש
+    private MaterialCardView cardAddUsers, cardAddClasses, cardManageUsers, cardManageClasses, cardSchedule;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,18 +30,19 @@ public class AdminDashboardActivity extends BaseMenuActivity {
             android.util.Log.d("FirebaseSetup", "Settings already initialized: " + e.getMessage());
         }
 
-        cardAddUser = findViewById(R.id.cardAddUser);
-        cardAddClass = findViewById(R.id.cardAddClass);
+        // קישור הרכיבים מה-XML (כולל ה-IDs המתוקנים בלשון רבים)
+        cardAddUsers = findViewById(R.id.cardAddUsers);
+        cardAddClasses = findViewById(R.id.cardAddClasses);
         cardManageUsers = findViewById(R.id.cardManageUsers);
         cardManageClasses = findViewById(R.id.cardManageClasses);
         cardSchedule = findViewById(R.id.cardSchedule);
 
-        setupCard(cardAddUser, AddUserActivity.class);
-        setupCard(cardAddClass, AddClassActivity.class);
+        // הגדרת הפעולות והאנימציות לכל כרטיס
+        setupCard(cardAddUsers, AddUserActivity.class);
+        setupCard(cardAddClasses, AddClassActivity.class);
         setupCard(cardManageUsers, ManageUsersActivity.class);
         setupCard(cardManageClasses, ManageClassesActivity.class);
-
-        setupCard(cardSchedule, null);
+        setupCard(cardSchedule, null); // כרגע פותח הודעת בקרוב (או החלף במסך המתאים במידת הצורך)
     }
 
     @Override
@@ -50,12 +52,14 @@ public class AdminDashboardActivity extends BaseMenuActivity {
 
     @Override
     protected int[] getAllowedUserTypes() {
-        // תיקון: מתן גישה גם ל-School Admin (2) וגם ל-Schooly Admin (3)
         return new int[]{2, 3};
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private void setupCard(View card, Class<?> destinationActivity) {
+        if (card == null) return;
+
+        // 1. מה קורה בלחיצה (מעבר מסך)
         card.setOnClickListener(v -> {
             if (destinationActivity != null) {
                 startActivity(new Intent(this, destinationActivity));
@@ -64,6 +68,7 @@ public class AdminDashboardActivity extends BaseMenuActivity {
             }
         });
 
+        // 2. אפקט האנימציה המגניב (התכווצות קלה בלחיצה)
         card.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
@@ -71,10 +76,10 @@ public class AdminDashboardActivity extends BaseMenuActivity {
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
                     break;
             }
-            return false;
+            return false; // מאפשר ל-OnClickListener להמשיך לעבוד כרגיל
         });
     }
 }

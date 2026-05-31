@@ -14,7 +14,7 @@ import com.google.firebase.firestore.PersistentCacheSettings;
 
 public class StudentDashboardActivity extends BaseMenuActivity {
 
-    private MaterialCardView cardProfile, cardSchedule, cardGrades, cardAttendance, cardHomework, cardMessages;
+    private MaterialCardView cardProfile, cardSchedule;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,28 +32,13 @@ public class StudentDashboardActivity extends BaseMenuActivity {
             android.util.Log.d("FirebaseSetup", "Settings already initialized: " + e.getMessage());
         }
 
-// עכשיו אפשר להמשיך להשתמש ב-db כרגיל
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-        // 1. מציאת הכרטיסים לפי ה-ID
+        // מקשרים רק את שני הכפתורים שנשארו
         cardProfile = findViewById(R.id.cardProfile);
         cardSchedule = findViewById(R.id.cardSchedule);
-        cardGrades = findViewById(R.id.cardGrades);
-        cardAttendance = findViewById(R.id.cardAttendance);
-        cardHomework = findViewById(R.id.cardHomework);
-        cardMessages = findViewById(R.id.cardMessages);
 
-        // 2. הפעלת האנימציה והלחיצה לכל כרטיס
-
-        // כרטיס פרופיל - עובר למסך פרופיל
         setupCard(cardProfile, ProfileActivity.class);
-
-        // שאר הכרטיסים (כרגע אין להם מסך אז שמתי הודעה זמנית)
+        // שים לב: אם עדיין אין לך מחלקה ScheduleActivity, שנה את זה ל-null לעת עתה
         setupCard(cardSchedule, null);
-        setupCard(cardGrades, null);
-        setupCard(cardAttendance, null);
-        setupCard(cardHomework, null);
-        setupCard(cardMessages, null);
     }
 
     @Override
@@ -86,11 +71,10 @@ public class StudentDashboardActivity extends BaseMenuActivity {
 
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    // כשעוזבים - מחזיר לגודל מקורי
+                    // כשעוזבים - חוזר לגודל המקורי
                     v.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
                     break;
             }
-            // מחזיר false כדי לאפשר ל-OnClickListener לעבוד גם
             return false;
         });
     }
