@@ -31,7 +31,11 @@ public class AddTeacherFragment extends Fragment {
     private DocumentReference currentSchoolRef;
 
     private ArrayList<String> allSubjectNames = new ArrayList<>();
-    private ArrayList<String> selectedSubjects = new ArrayList<>();
+    private ArrayList<String> selectedSubjects = new ArrayList<>(); // ⚠️ זו הרשימה הישנה שמחזיקה שמות (טקסט)
+    // ✨ התוספת שלך: רשימות שיחזיקו את הרפרנסים
+    private ArrayList<DocumentReference> allSubjectRefs = new ArrayList<>();
+    private ArrayList<DocumentReference> selectedSubjectRefs = new ArrayList<>();
+
     private boolean[] checkedSubjects;
 
     public AddTeacherFragment() { }
@@ -41,10 +45,7 @@ public class AddTeacherFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_add_teacher, container, false);
         db = FirebaseFirestore.getInstance();
         initViews(view);
-
-        if (currentSchoolRef != null) {
-            loadSubjects();
-        }
+        loadSubjects();
         return view;
     }
 
@@ -71,15 +72,17 @@ public class AddTeacherFragment extends Fragment {
     private void loadSubjects() {
         if (db == null) return;
 
-        // תיקון: מקצועות הם אוניברסליים! מושכים את כולם ללא קשר לבית הספר, רק לפי displayName
         db.collection("subjects").get().addOnSuccessListener(queryDocumentSnapshots -> {
             if (!isAdded() || getContext() == null) return;
 
             allSubjectNames.clear();
+            allSubjectRefs.clear(); // ✨ חובה לנקות את רשימת הרפרנסים
+
             for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                 String displayName = doc.getString("displayName");
                 if (displayName != null) {
                     allSubjectNames.add(displayName);
+                    allSubjectRefs.add(doc.getReference()); // ✨ חובה! כדי שלא יקרוס כשנשלוף ממנה
                 }
             }
 
@@ -111,10 +114,13 @@ public class AddTeacherFragment extends Fragment {
 
         builder.setPositiveButton("OK", (dialog, id) -> {
             selectedSubjects.clear();
+            selectedSubjectRefs.clear(); // ✨ תוספת 1: מנקים את רשימת הרפרנסים כדי שלא יצטברו כפילויות
             layoutSelectedSubjectsList.removeAllViews();
+
             for (int i = 0; i < checkedSubjects.length; i++) {
                 if (checkedSubjects[i]) {
                     selectedSubjects.add(allSubjectNames.get(i));
+                    selectedSubjectRefs.add(allSubjectRefs.get(i)); // ✨ תוספת 2: מוסיפים את הרפרנס האמיתי לרשימה!
                     addSubjectTextViewToList(allSubjectNames.get(i));
                 }
             }
@@ -171,7 +177,8 @@ public class AddTeacherFragment extends Fragment {
         }
     }
 
-    public ArrayList<String> getSelectedSubjects() {
-        return selectedSubjects;
+    // נשנה את טיפוס ההחזרה מ-String ל-DocumentReference
+    public ArrayList<DocumentReference> getSelectedSubjects() {
+        return selectedSubjectRefs;
     }
 }

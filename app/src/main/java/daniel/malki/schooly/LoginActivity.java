@@ -1,6 +1,7 @@
 package daniel.malki.schooly;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
@@ -10,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -115,6 +117,9 @@ public class LoginActivity extends AppCompatActivity {
 
         Long typeLong = document.getLong("type");
         int type = (typeLong != null) ? typeLong.intValue() : 0;
+        // ✨ התוספת: שולפים את הרפרנס של בית הספר
+        DocumentReference schoolRef = document.getDocumentReference("school");
+        String schoolId = (schoolRef != null) ? schoolRef.getId() : null;
 
         // 2. בדיקת סיסמה
         if (savedPassword == null || !savedPassword.equals(inputPassword)) {
@@ -123,15 +128,18 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         // 3. שמירה ב-SharedPreferences
-        getSharedPreferences("SchoolyPrefs", MODE_PRIVATE)
-                .edit()
-                .putBoolean("isLoggedIn", true)
+        SharedPreferences.Editor editor = getSharedPreferences("SchoolyPrefs", MODE_PRIVATE).edit();
+        editor.putBoolean("isLoggedIn", true)
                 .putString("userId", document.getId())
                 .putString("userName", name)
                 .putString("userEmail", email)
-                .putInt("userType", type)
-                .apply();
+                .putInt("userType", type);
 
+        // ✨ התוספת: שומרים את ה-ID של בית הספר כדי שרמה 2 לא תקרוס
+        if (schoolId != null) {
+            editor.putString("currentSchoolId", schoolId);
+        }
+        editor.apply();
         Toast.makeText(this, "Welcome " + name + " 👋", Toast.LENGTH_SHORT).show();
 
         // 4. ניתוב לפי סוג משתמש

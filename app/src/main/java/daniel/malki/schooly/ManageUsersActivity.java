@@ -82,9 +82,11 @@ public class ManageUsersActivity extends BaseMenuActivity {
 
         initViews();
         setupRecyclerView();
+        // ✨ התיקון הקריטי: קודם כל קובעים את הקשר האדמין (טוענים את סוג המשתמש וה-School ID)
+        determineAdminContext();
+        // רק לאחר מכן טוענים את שאר הפילטרים והמאזינים בצורה בטוחה
         loadDynamicFilterData(); // טוען שכבות ומקצועות
         setupFilters();
-        determineAdminContext();
     }
 
     private void initViews() {
@@ -365,7 +367,7 @@ public class ManageUsersActivity extends BaseMenuActivity {
                 if (studentType == 2 && !user.isExceptionStudent()) continue; // רק חריגים
 
                 int gradePos = spinnerStudentGrade.getSelectedItemPosition();
-                if (gradePos > 0) {
+                if (gradePos > 0 && gradeIds != null && gradePos < gradeIds.size()) {
                     String selectedGradeId = gradeIds.get(gradePos);
                     if (user.getGrade() == null || !user.getGrade().getId().equals(selectedGradeId)) continue;
                 }
@@ -378,7 +380,7 @@ public class ManageUsersActivity extends BaseMenuActivity {
                 if (teacherType == 2 && user.getType() != 2) continue; // רק הנהלת בית ספר
 
                 int subjectPos = spinnerTeacherSubject.getSelectedItemPosition();
-                if (subjectPos > 0) {
+                if (subjectPos > 0 && subjectIds != null && subjectPos < subjectIds.size()) {
                     String selectedSubId = subjectIds.get(subjectPos);
                     boolean hasSubject = false;
                     if (user.getTeachableSubjects() != null) {

@@ -103,7 +103,19 @@ public class AddUserActivity extends BaseMenuActivity {
     }
 
     private void setupRoleSpinner() {
-        ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, ROLES);
+        // יצירת רשימת תפקידים דינמית
+        ArrayList<String> visibleRoles = new ArrayList<>();
+        visibleRoles.add("Student");       // מיקום 0
+        visibleRoles.add("Teacher");       // מיקום 1
+        visibleRoles.add("School Admin");  // מיקום 2
+
+        // רק אם המשתמש המחובר הוא מנהל על (Schooly Admin = 3), נוסיף את האופציה ליצור מנהל על נוסף
+        if (loggedInUserType == 3) {
+            visibleRoles.add("Schooly Admin"); // מיקום 3
+        }
+
+        // חיבור הרשימה הדינמית לספינר
+        ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, visibleRoles);
         spinnerRole.setAdapter(roleAdapter);
 
         spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -134,12 +146,10 @@ public class AddUserActivity extends BaseMenuActivity {
             studentFragment = new AddStudentFragment();
             showFragment(studentFragment);
             studentFragment.setSchoolRefAndLoad(selectedSchoolRef);
-        } else if (position == 1) {
+        } else if (position == 1 || position == 2) { // ✨ התיקון כאן: מציג את פרגמנט המורה גם עבור מנהל בית ספר
             teacherFragment = new AddTeacherFragment();
             showFragment(teacherFragment);
             teacherFragment.setSchoolRefAndLoad(selectedSchoolRef);
-        } else if (position == 2) {
-            clearFragmentContainer();
         }
     }
 
@@ -282,10 +292,22 @@ public class AddUserActivity extends BaseMenuActivity {
             userData.put("grade", gradeRef);
             userData.put("classes", studentFragment.getSelectedClassesMap());
 
-        } else if (rolePosition == 1) {
+        } else if (rolePosition == 1 || rolePosition == 2) {
             if (teacherFragment == null) return;
-            ArrayList<String> subjects = teacherFragment.getSelectedSubjects();
-            userData.put("teachableSubjects", subjects);
+
+            ArrayList<DocumentReference> subjects = teacherFragment.getSelectedSubjects();
+
+            // ✨ הגנה 1: עצירת השמירה אם הרשימה ריקה!
+            // ככה נוכל לדעת בוודאות אם המידע הלך לאיבוד עוד לפני פיירבייס
+            if (subjects == null || subjects.isEmpty()) {
+                Toast.makeText(AddUserActivity.this, "⚠️ You must select at least one subject!", Toast.LENGTH_LONG).show();
+                btnSaveUser.setEnabled(true);
+                return; // עוצר את תהליך השמירה ולא נותן לו לשלוח מערך ריק
+            }
+
+            // ✨ הגנה 2: אנחנו עוטפים את הרשימה ב-new ArrayList כדי ליצור עותק חדש בזיכרון.
+            // זה מבטיח שגם אם המסך נסגר, פיירבייס לא יאבד את המקצועות.
+            userData.put("teachableSubjects", new ArrayList<>(subjects));
         }
 
         btnSaveUser.setEnabled(false);
