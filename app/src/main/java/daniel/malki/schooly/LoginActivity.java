@@ -86,11 +86,15 @@ public class LoginActivity extends AppCompatActivity {
     /* ---------------- FIRESTORE LOGIN ---------------- */
 
     private void loginWithFirestore(String id, String inputPassword) {
+        // 1. מצפינים את הסיסמה שהמשתמש הקליד כאן ועכשיו
+        String hashedInputPass = hashPassword(inputPassword);
+
         db.collection("users")
                 .document(id)
                 .get()
                 .addOnSuccessListener(document ->
-                        handleLoginResult(document, inputPassword)
+                        // 2. שולחים לפונקציית הבדיקה את הסיסמה המוצפנת
+                        handleLoginResult(document, hashedInputPass)
                 )
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Database error: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -170,5 +174,23 @@ public class LoginActivity extends AppCompatActivity {
 
     private boolean isValidPassword(String password) {
         return password != null && password.length() >= 4;
+    }
+
+    // פונקציה להצפנת סיסמה בעזרת SHA-256
+    private String hashPassword(String password) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

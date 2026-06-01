@@ -267,7 +267,8 @@ public class AddUserActivity extends BaseMenuActivity {
         String middleName = etMiddleName.getText().toString().trim();
         if (!middleName.isEmpty()) userData.put("middleName", middleName);
         userData.put("email", email);
-        userData.put("password", password);
+        // שומרים את הסיסמה אחרי שעברה האש
+        userData.put("password", hashPassword(password));
         userData.put("type", rolePosition);
         if (selectedSchoolRef != null) userData.put("school", selectedSchoolRef);
 
@@ -311,5 +312,23 @@ public class AddUserActivity extends BaseMenuActivity {
             Toast.makeText(this, "Error checking database: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             btnSaveUser.setEnabled(true);
         });
+    }
+
+    // פונקציה להצפנת סיסמה בעזרת SHA-256
+    private String hashPassword(String password) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
