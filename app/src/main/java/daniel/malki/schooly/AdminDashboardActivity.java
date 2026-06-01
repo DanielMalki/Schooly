@@ -42,7 +42,7 @@ public class AdminDashboardActivity extends BaseMenuActivity {
         setupCard(cardAddClasses, AddClassActivity.class);
         setupCard(cardManageUsers, ManageUsersActivity.class);
         setupCard(cardManageClasses, ManageClassesActivity.class);
-        setupCard(cardSchedule, null); // כרגע פותח הודעת בקרוב (או החלף במסך המתאים במידת הצורך)
+        setupCard(cardSchedule, ScheduleActivity.class); // כרגע פותח הודעת בקרוב (או החלף במסך המתאים במידת הצורך)
     }
 
     @Override

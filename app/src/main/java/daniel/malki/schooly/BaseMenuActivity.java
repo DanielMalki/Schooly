@@ -123,7 +123,6 @@ public abstract class BaseMenuActivity extends AppCompatActivity
         MenuItem titleAdmin = menu.findItem(R.id.title_admin);
 
         MenuItem itemSchedule = menu.findItem(R.id.menu_schedule);
-        MenuItem itemGrades = menu.findItem(R.id.menu_grades);
         MenuItem titleAcademic = menu.findItem(R.id.title_academic);
 
         // 🟥 צביעת כפתור ההתנתקות באדום בולט (טקסט + אייקון)
@@ -151,53 +150,67 @@ public abstract class BaseMenuActivity extends AppCompatActivity
 
         if (titleAcademic != null) titleAcademic.setVisible(isAcademicVisible);
         if (itemSchedule != null) itemSchedule.setVisible(isAcademicVisible);
-        if (itemGrades != null) itemGrades.setVisible(isAcademicVisible);
     }
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        drawerLayout.closeDrawers();
         int id = item.getItemId();
 
         if (id == R.id.menu_home) {
             navigateToHomeByType();
-        }
-        else if (id == R.id.menu_profile) {
-            if (!(this instanceof ProfileActivity)) {
-                startActivity(new Intent(this, ProfileActivity.class));
+        } else if (id == R.id.menu_profile) {
+            // Check if we are already in ProfileActivity to prevent reloading
+            if (!this.getClass().getSimpleName().equals("ProfileActivity")) {
+                try {
+                    Class<?> profileClass = Class.forName("daniel.malki.schooly.ProfileActivity");
+                    Intent intent = new Intent(this, profileClass);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(intent);
+                } catch (ClassNotFoundException e) {
+                    Toast.makeText(this, "Profile screen under construction 🛠️", Toast.LENGTH_SHORT).show();
+                }
             }
-        }
-        else if (id == R.id.menu_logout) {
-            // 🔥 שינוי: במקום להתנתק מיד, נציג דיאלוג וידוא חמור
-            showLogoutConfirmationDialog();
-        }
-        else if (id == R.id.menu_add_user) {
-            if (!(this instanceof AddUserActivity)) {
-                startActivity(new Intent(this, AddUserActivity.class));
+        } else if (id == R.id.menu_schedule) {
+            // Navigation to Schedule implemented here
+            if (!this.getClass().getSimpleName().equals("ScheduleActivity")) {
+                Intent intent = new Intent(this, ScheduleActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intent);
             }
-        }
-        else if (id == R.id.menu_add_class) {
-            if (!(this instanceof AddClassActivity)) {
-                startActivity(new Intent(this, AddClassActivity.class));
+        } else if (id == R.id.menu_add_user) {
+            if (this instanceof AdminDashboardActivity) {
+                Toast.makeText(this, "Scroll down to find Add New User card", Toast.LENGTH_SHORT).show();
+            } else {
+                Intent intent = new Intent(this, AdminDashboardActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intent);
             }
-        }
-        else if (id == R.id.menu_manage_users) {
-            if (!(this instanceof ManageUsersActivity)) {
-                startActivity(new Intent(this, ManageUsersActivity.class));
+        } else if (id == R.id.menu_add_class) {
+            try {
+                Class<?> targetClass = Class.forName("daniel.malki.schooly.AddClassActivity");
+                startActivity(new Intent(this, targetClass));
+            } catch (ClassNotFoundException e) {
+                Toast.makeText(this, "Add Learning Group under construction 🛠️", Toast.LENGTH_SHORT).show();
             }
-        }
-        else if (id == R.id.menu_manage_classes) {
-            if (!(this instanceof ManageClassesActivity)) {
-                startActivity(new Intent(this, ManageClassesActivity.class));
+        } else if (id == R.id.menu_manage_users) {
+            try {
+                Class<?> targetClass = Class.forName("daniel.malki.schooly.ManageUsersActivity");
+                startActivity(new Intent(this, targetClass));
+            } catch (ClassNotFoundException e) {
+                Toast.makeText(this, "Manage Users under construction 🛠️", Toast.LENGTH_SHORT).show();
             }
-        }
-        else if (id == R.id.menu_schedule) {
-            Toast.makeText(this, "Schedule - Coming Soon 📅", Toast.LENGTH_SHORT).show();
-        }
-        else if (id == R.id.menu_grades) {
-            Toast.makeText(this, "Grades - Coming Soon 💯", Toast.LENGTH_SHORT).show();
+        } else if (id == R.id.menu_manage_classes) {
+            try {
+                Class<?> targetClass = Class.forName("daniel.malki.schooly.ManageClassesActivity");
+                startActivity(new Intent(this, targetClass));
+            } catch (ClassNotFoundException e) {
+                Toast.makeText(this, "Manage Classes under construction 🛠️", Toast.LENGTH_SHORT).show();
+            }
+        } else if (id == R.id.menu_logout) {
+            logout();
         }
 
+        drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START);
         return true;
     }
 

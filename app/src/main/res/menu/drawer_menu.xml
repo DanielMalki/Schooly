@@ -43,17 +43,16 @@
                 android:id="@+id/menu_schedule"
                 android:title="My Schedule"
                 android:icon="@android:drawable/ic_menu_today"/>
-
-            <item
-                android:id="@+id/menu_grades"
-                android:title="Grades"
-                android:icon="@android:drawable/ic_menu_sort_by_size"/>
         </menu>
     </item>
 
-    <item
-        android:id="@+id/menu_logout"
-        android:title="Logout"
-        android:icon="@android:drawable/ic_lock_power_off"/>
+    <item android:title="Account" android:id="@+id/title_account">
+        <menu>
+            <item
+                android:id="@+id/menu_logout"
+                android:title="Logout"
+                android:icon="@android:drawable/ic_lock_power_off"/>
+        </menu>
+    </item>
 
 </menu>

@@ -82,80 +82,80 @@ public class AddStudentFragment extends Fragment {
     // =========================================================================
     // פונקציית עזר: מחלצת מספרים מהטקסט לטובת סידור הגיוני (1, 2... 10... Graduated)
     // =========================================================================
-    private int extractGradeNumber(String name) {
-        if (name == null) return 9999;
-        String numStr = name.replaceAll("\\D+", ""); // מנקה כל מה שהוא לא ספרה
-        if (numStr.isEmpty()) return 9999; // אם זה "Graduated", ניתן לו מספר ענק שיופיע בסוף
-        return Integer.parseInt(numStr);
-    }
+        private int extractGradeNumber(String name) {
+            if (name == null) return 9999;
+            String numStr = name.replaceAll("\\D+", ""); // מנקה כל מה שהוא לא ספרה
+            if (numStr.isEmpty()) return 9999; // אם זה "Graduated", ניתן לו מספר ענק שיופיע בסוף
+            return Integer.parseInt(numStr);
+        }
 
-    private void loadGradesAndClasses() {
-        if (db == null) return;
+        private void loadGradesAndClasses() {
+            if (db == null) return;
 
-        db.collection("grades").get().addOnSuccessListener(gradesSnap -> {
-            if (!isAdded() || getContext() == null) return;
+            db.collection("grades").get().addOnSuccessListener(gradesSnap -> {
+                if (!isAdded() || getContext() == null) return;
 
-            gradeNames.clear(); gradeRefs.clear();
-            filterGradeNames.clear(); filterGradeIds.clear();
-            gradeMap.clear();
+                gradeNames.clear(); gradeRefs.clear();
+                filterGradeNames.clear(); filterGradeIds.clear();
+                gradeMap.clear();
 
-            filterGradeNames.add("All Grades");
-            filterGradeIds.add("");
+                filterGradeNames.add("All Grades");
+                filterGradeIds.add("");
 
-            // 1. שומרים הכל ברשימה זמנית כדי למיין
-            List<QueryDocumentSnapshot> sortedGrades = new ArrayList<>();
-            for (QueryDocumentSnapshot doc : gradesSnap) {
-                sortedGrades.add(doc);
-            }
-
-            // 2. ממיינים לפי המספר שחילצנו
-            Collections.sort(sortedGrades, (d1, d2) -> {
-                String n1 = d1.getString("displayName");
-                if (n1 == null) n1 = d1.getId();
-                String n2 = d2.getString("displayName");
-                if (n2 == null) n2 = d2.getId();
-
-                int num1 = extractGradeNumber(n1);
-                int num2 = extractGradeNumber(n2);
-
-                if (num1 != num2) {
-                    return Integer.compare(num1, num2); // מיון מספרי
+                // 1. שומרים הכל ברשימה זמנית כדי למיין
+                List<QueryDocumentSnapshot> sortedGrades = new ArrayList<>();
+                for (QueryDocumentSnapshot doc : gradesSnap) {
+                    sortedGrades.add(doc);
                 }
-                return n1.compareTo(n2); // אם משום מה יש שניים באותו מספר, ימוין לפי א' ב'
-            });
 
-            // 3. מכניסים לספינרים לפי הסדר הנכון
-            for (QueryDocumentSnapshot doc : sortedGrades) {
-                String gName = doc.getString("displayName");
-                if (gName == null) gName = doc.getId();
+                // 2. ממיינים לפי המספר שחילצנו
+                Collections.sort(sortedGrades, (d1, d2) -> {
+                    String n1 = d1.getString("displayName");
+                    if (n1 == null) n1 = d1.getId();
+                    String n2 = d2.getString("displayName");
+                    if (n2 == null) n2 = d2.getId();
 
-                String gId = doc.getId();
-                gradeNames.add(gName);
-                gradeRefs.add(doc.getReference());
+                    int num1 = extractGradeNumber(n1);
+                    int num2 = extractGradeNumber(n2);
 
-                filterGradeNames.add(gName);
-                filterGradeIds.add(gId);
-                gradeMap.put(gId, gName);
-            }
+                    if (num1 != num2) {
+                        return Integer.compare(num1, num2); // מיון מספרי
+                    }
+                    return n1.compareTo(n2); // אם משום מה יש שניים באותו מספר, ימוין לפי א' ב'
+                });
 
-            ArrayAdapter<String> gradeAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, gradeNames);
-            spinnerStudentGrade.setAdapter(gradeAdapter);
+                // 3. מכניסים לספינרים לפי הסדר הנכון
+                for (QueryDocumentSnapshot doc : sortedGrades) {
+                    String gName = doc.getString("displayName");
+                    if (gName == null) gName = doc.getId();
 
-            ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, filterGradeNames);
-            spinnerFilterClassesGrade.setAdapter(filterAdapter);
+                    String gId = doc.getId();
+                    gradeNames.add(gName);
+                    gradeRefs.add(doc.getReference());
 
-            spinnerFilterClassesGrade.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    filterAndDisplayClasses();
+                    filterGradeNames.add(gName);
+                    filterGradeIds.add(gId);
+                    gradeMap.put(gId, gName);
                 }
-                @Override
-                public void onNothingSelected(AdapterView<?> parent) {}
-            });
 
-            fetchAllClassesForSchool();
-        });
-    }
+                ArrayAdapter<String> gradeAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, gradeNames);
+                spinnerStudentGrade.setAdapter(gradeAdapter);
+
+                ArrayAdapter<String> filterAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, filterGradeNames);
+                spinnerFilterClassesGrade.setAdapter(filterAdapter);
+
+                spinnerFilterClassesGrade.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                    @Override
+                    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                        filterAndDisplayClasses();
+                    }
+                    @Override
+                    public void onNothingSelected(AdapterView<?> parent) {}
+                });
+
+                fetchAllClassesForSchool();
+            });
+        }
 
     private void fetchAllClassesForSchool() {
         if (currentSchoolRef == null || db == null) return;

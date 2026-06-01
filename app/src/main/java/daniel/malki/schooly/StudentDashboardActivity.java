@@ -38,7 +38,7 @@ public class StudentDashboardActivity extends BaseMenuActivity {
 
         setupCard(cardProfile, ProfileActivity.class);
         // שים לב: אם עדיין אין לך מחלקה ScheduleActivity, שנה את זה ל-null לעת עתה
-        setupCard(cardSchedule, null);
+        setupCard(cardSchedule, ScheduleActivity.class);
     }
 
     @Override
