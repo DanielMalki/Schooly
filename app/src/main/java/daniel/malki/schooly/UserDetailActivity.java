@@ -247,8 +247,8 @@ public class UserDetailActivity extends BaseMenuActivity {
                 }
             }
 
-            if (doc.contains("avatarBlob")) {
-                Blob blob = doc.getBlob("avatarBlob");
+            if (doc.contains("profileImageBlob")) {
+                Blob blob = doc.getBlob("profileImageBlob");
                 if (blob != null) {
                     byte[] bytes = blob.toBytes();
                     Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
@@ -265,7 +265,7 @@ public class UserDetailActivity extends BaseMenuActivity {
                 getSupportFragmentManager().beginTransaction()
                         .replace(R.id.dynamicFieldsContainer, editStudentFragment)
                         .commitAllowingStateLoss();
-            } else if (userTypeInt == 1) { // Teacher
+            } else if ((userTypeInt == 1) || (userTypeInt == 2)) { // Teacher
                 List<DocumentReference> subjects = (List<DocumentReference>) doc.get("teachableSubjects");
                 if (subjects != null) loadedSubjectsList = subjects;
 
@@ -307,12 +307,12 @@ public class UserDetailActivity extends BaseMenuActivity {
         if (selectedBitmap != null) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             selectedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
-            updates.put("avatarBlob", Blob.fromBytes(baos.toByteArray()));
+            updates.put("profileImageBlob", Blob.fromBytes(baos.toByteArray()));
         }
 
         if (userTypeInt == 0 && editStudentFragment != null) {
             updates.put("classes", editStudentFragment.getSelectedClassesMap());
-        } else if (userTypeInt == 1 && editTeacherFragment != null) {
+        } else if (((userTypeInt == 1) || (userTypeInt == 2)) && editTeacherFragment != null) {
             updates.put("teachableSubjects", editTeacherFragment.getSelectedSubjectsRefs());
         }
 

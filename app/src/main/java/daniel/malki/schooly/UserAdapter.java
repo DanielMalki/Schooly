@@ -67,6 +67,21 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             holder.imgExceptionWarning.setVisibility(View.GONE);
         }
 
+        if (user.getProfileImageBlob() != null) {
+            try {
+                byte[] bytes = user.getProfileImageBlob().toBytes();
+                android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                holder.profileImageBlob.setImageBitmap(bitmap);
+            } catch (Exception e) {
+                e.printStackTrace();
+                // החזרת האייקון הדיפולטיבי המקורי למקרה של שגיאה בפענוח
+                holder.profileImageBlob.setImageResource(android.R.drawable.sym_def_app_icon);
+            }
+        } else {
+            // החזרת האייקון הדיפולטיבי המקורי כשאין למשתמש תמונה בדאטהבייס
+            holder.profileImageBlob.setImageResource(android.R.drawable.sym_def_app_icon);
+        }
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onItemClick(user);
@@ -80,12 +95,12 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
     }
 
     public static class UserViewHolder extends RecyclerView.ViewHolder {
-        ImageView imgUserAvatar, imgExceptionWarning;
+        ImageView profileImageBlob, imgExceptionWarning;
         TextView tvUserName, tvUserId, tvUserRoleBadge;
 
         public UserViewHolder(@NonNull View itemView) {
             super(itemView);
-            imgUserAvatar = itemView.findViewById(R.id.imgUserAvatar);
+            profileImageBlob = itemView.findViewById(R.id.profileImageBlob);
             imgExceptionWarning = itemView.findViewById(R.id.imgExceptionWarning);
             tvUserName = itemView.findViewById(R.id.tvUserName);
             tvUserId = itemView.findViewById(R.id.tvUserId);

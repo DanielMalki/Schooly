@@ -16,6 +16,7 @@ public class User {
     private Map<String, DocumentReference> classes;
     private DocumentReference grade;
     private List<DocumentReference> teachableSubjects;
+    private com.google.firebase.firestore.Blob profileImageBlob;
 
     public User() {}
 
@@ -76,6 +77,14 @@ public class User {
     public List<DocumentReference> getTeachableSubjects() { return teachableSubjects; }
     @PropertyName("teachableSubjects")
     public void setTeachableSubjects(List<DocumentReference> teachableSubjects) { this.teachableSubjects = teachableSubjects; }
+    @com.google.firebase.firestore.PropertyName("profileImageBlob")
+    public com.google.firebase.firestore.Blob getProfileImageBlob() {
+        return profileImageBlob;
+    }
+    @com.google.firebase.firestore.PropertyName("profileImageBlob")
+    public void setProfileImageBlob(com.google.firebase.firestore.Blob profileImageBlob) {
+        this.profileImageBlob = profileImageBlob;
+    }
 
     // הפונקציה שמגדירה מיהו תלמיד חריג
     @com.google.firebase.firestore.Exclude
